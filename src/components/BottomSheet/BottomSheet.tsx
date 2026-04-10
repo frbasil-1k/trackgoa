@@ -49,19 +49,19 @@ const BottomSheet: React.FC = () => {
       <div className="bottom-sheet-handle" />
       
       <div style={{ padding: '0 20px 80px', overflowY: 'auto' }}>
-        <div className="flex justify-between items-center mb-4" style={{ marginBottom: '16px' }}>
-          <h2 className="font-bold text-lg">Nearby Buses</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="font-bold text-xl text-primary tracking-tight">Nearby Buses</h2>
         </div>
 
         {customStopLocation && (
-          <div style={{ padding: '12px', background: 'rgba(37, 99, 235, 0.1)', borderRadius: 'var(--radius)', border: '1px solid var(--primary)', marginBottom: '16px' }}>
-            <p className="text-sm font-semibold" style={{ color: 'var(--primary)' }}>📍 Custom Stop ETA Mode</p>
-            <p className="text-xs text-muted mt-1">Bus estimations are perfectly zeroing in on your custom pin drop.</p>
+          <div style={{ padding: '16px', background: 'var(--surface)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--accent)', borderLeft: '4px solid var(--accent)', marginBottom: '20px', boxShadow: 'var(--shadow-sm)' }}>
+            <p className="text-sm font-bold" style={{ color: 'var(--primary)' }}>📍 Custom Stop Set</p>
+            <p className="text-xs text-muted mt-1 leading-relaxed">ETAs below are now dynamically calculated to your dropped pin.</p>
           </div>
         )}
 
         <div className="flex flex-col gap-3">
-          {sortedBuses.length === 0 && <p className="text-muted text-sm text-center py-4">No buses currently active.</p>}
+          {sortedBuses.length === 0 && <p className="text-muted text-sm text-center py-8">No buses currently active.</p>}
           {sortedBuses.map(({ bus, route, etaMins, distanceKm }, index) => (
             <BusCard 
               key={bus.id} 

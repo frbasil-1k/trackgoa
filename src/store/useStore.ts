@@ -2,8 +2,7 @@ import { create } from 'zustand';
 import type { Bus, Route } from '../data/mockData';
 import { MOCK_ROUTES, INITIAL_BUSES } from '../data/mockData';
 
-export type ScreenType = 'Home' | 'Map' | 'Analytics' | 'Favorites';
-
+export type ScreenType = 'Home' | 'Map' | 'Analytics' | 'Saved' | 'Settings' | 'Routes';
 export interface Alert {
   id: string;
   busId: string;
@@ -25,6 +24,11 @@ interface AppState {
   activeAlerts: Alert[];
   triggeredAlerts: string[]; // IDs of alerts that have fired
   
+  // Settings
+  lowBandwidthMode: boolean;
+  liveSimulation: boolean;
+  preferredCity: string;
+  
   // Actions
   setScreen: (screen: ScreenType) => void;
   setBuses: (buses: Bus[]) => void;
@@ -37,6 +41,9 @@ interface AppState {
   addAlert: (alert: Omit<Alert, 'id'>) => void;
   triggerAlert: (alertId: string) => void;
   removeAlert: (alertId: string) => void;
+  setLowBandwidthMode: (enabled: boolean) => void;
+  setLiveSimulation: (enabled: boolean) => void;
+  setPreferredCity: (city: string) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -51,6 +58,9 @@ export const useStore = create<AppState>((set) => ({
   favorites: { routes: ['r1'], stops: ['s1', 's4'] },
   activeAlerts: [],
   triggeredAlerts: [],
+  lowBandwidthMode: false,
+  liveSimulation: true,
+  preferredCity: 'All Cities',
 
   setScreen: (currentScreen) => set({ currentScreen }),
   setBuses: (buses) => set({ buses }),
@@ -81,5 +91,9 @@ export const useStore = create<AppState>((set) => ({
   removeAlert: (alertId) => set((state) => ({
     activeAlerts: state.activeAlerts.filter(a => a.id !== alertId),
     triggeredAlerts: state.triggeredAlerts.filter(id => id !== alertId)
-  }))
+  })),
+
+  setLowBandwidthMode: (enabled) => set({ lowBandwidthMode: enabled }),
+  setLiveSimulation: (enabled) => set({ liveSimulation: enabled }),
+  setPreferredCity: (city) => set({ preferredCity: city }),
 }));

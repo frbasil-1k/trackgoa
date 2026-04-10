@@ -1,48 +1,91 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useStore } from '../store/useStore';
+import { ArrowLeft, Star, TrendingUp, Clock } from 'lucide-react';
 
 const mockPerformanceData = [
-  { name: 'Panaji-Miramar', onTime: 92, delay: 8 },
-  { name: 'Margao-Fatorda', onTime: 78, delay: 22 },
-  { name: 'Vasco-Chicalim', onTime: 85, delay: 15 },
+  { id: '01', name: 'KTC-01', trips: 142, peak: '8AM, 6PM', onTime: 87, delay: 3.2, status: 'Reliable', statusColor: 'var(--success)', rating: 4.8 },
+  { id: '07', name: 'KTC-07', trips: 98, peak: '9AM, 5PM', onTime: 79, delay: 5.1, status: 'Usually on time', statusColor: 'var(--primary)', rating: 4.1 },
+  { id: '12', name: 'KTC-12', trips: 76, peak: '7AM, 7PM', onTime: 72, delay: 6.5, status: 'Delays likely', statusColor: 'var(--warning)', rating: 3.2 },
 ];
 
 const Analytics: React.FC = () => {
+  const { setScreen } = useStore();
+
   return (
-    <div style={{ height: '100%', width: '100%', background: 'var(--bg-color)', overflowY: 'auto', paddingBottom: '80px' }}>
+    <div style={{ height: '100%', width: '100%', background: 'var(--bg-color)', overflowY: 'auto', paddingBottom: '90px' }}>
       
-      <div style={{ padding: '24px 20px', background: 'var(--primary)', color: 'white' }}>
-        <h1 className="text-lg font-bold">Transit Analytics</h1>
-        <p className="text-sm" style={{ opacity: 0.8 }}>Live route performance monitoring</p>
+      {/* Premium minimal header */}
+      <div style={{ padding: '48px 24px 20px', background: 'var(--surface)', borderBottom: '1px solid var(--border-subtle)', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-4 cursor-pointer" onClick={() => setScreen('Home')}>
+            <ArrowLeft size={24} className="text-primary" />
+            <h1 className="text-2xl font-bold text-primary tracking-tight">Analytics</h1>
+          </div>
+        </div>
+        <div className="text-sm text-muted">Network-wide insight and performance</div>
       </div>
 
-      <div style={{ padding: '20px' }}>
-        <h2 className="font-semibold mb-4" style={{ marginBottom: '16px' }}>Network Overview</h2>
+      <div style={{ padding: '24px 20px' }}>
         
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
-          <div className="glass" style={{ padding: '16px', borderRadius: 'var(--radius)', textAlign: 'center' }}>
-            <div className="text-2xl font-bold" style={{ color: 'var(--success)' }}>87%</div>
-            <div className="text-xs text-muted">Network On-Time</div>
+        {/* Metric Cards Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '32px' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-xl)', padding: '20px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--success-light)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+              <TrendingUp size={20} />
+            </div>
+            <div className="font-bold text-2xl text-primary mb-1">79%</div>
+            <div className="text-xs text-muted font-semibold tracking-wide uppercase">On-Time Avg</div>
           </div>
-          <div className="glass" style={{ padding: '16px', borderRadius: 'var(--radius)', textAlign: 'center' }}>
-            <div className="text-2xl font-bold" style={{ color: 'var(--danger)' }}>12m</div>
-            <div className="text-xs text-muted">Avg Delay</div>
+          
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-xl)', padding: '20px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+             <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--warning-light)', color: 'var(--warning)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+              <Clock size={20} />
+            </div>
+             <div className="font-bold text-2xl text-primary mb-1">5.0m</div>
+            <div className="text-xs text-muted font-semibold tracking-wide uppercase">Avg Delay</div>
           </div>
         </div>
 
-        <h2 className="font-semibold mb-4" style={{ marginBottom: '16px' }}>Route Reliability</h2>
+        <h2 className="font-bold text-lg mb-4 text-primary">Route Performance</h2>
         
-        <div className="glass" style={{ borderRadius: 'var(--radius)', padding: '16px', height: '250px' }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={mockPerformanceData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-              <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} />
-              <Bar dataKey="onTime" name="On Time %" stackId="a" fill="var(--success)" radius={[0, 0, 4, 4]} />
-              <Bar dataKey="delay" name="Delay %" stackId="a" fill="var(--danger)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="flex flex-col gap-4">
+          {mockPerformanceData.map((data, i) => (
+             <div key={i} style={{ background: 'var(--surface)', borderRadius: 'var(--radius-xl)', padding: '20px', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
+               <div className="flex justify-between items-start mb-4">
+                 <div className="flex items-center gap-4">
+                   <div style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--primary)', fontWeight: 'bold', fontSize: '16px', width: '48px', height: '48px', borderRadius: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                     {data.id}
+                   </div>
+                   <div>
+                     <div className="font-bold text-base text-primary mb-1">{data.name}</div>
+                     <div className="text-xs text-muted font-medium">{data.trips} daily trips</div>
+                   </div>
+                 </div>
+                 <div className="flex items-center gap-1 font-bold text-sm" style={{ color: data.statusColor }}>
+                    <Star size={14} fill="currentColor" /> {data.rating}
+                 </div>
+               </div>
+               
+               <div className="flex justify-between items-center text-sm mb-2">
+                 <span className="font-bold text-primary">{data.onTime}% On time</span>
+                 <span className="text-xs font-semibold text-muted tracking-wide">{data.delay}m Avg delay</span>
+               </div>
+               
+               {/* Clean Progress bar */}
+               <div style={{ height: '8px', background: 'var(--bg-color)', borderRadius: 'var(--radius-full)', margin: '0 0 16px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                 <div style={{ height: '100%', width: `${data.onTime}%`, background: data.statusColor, borderRadius: 'var(--radius-full)', transition: 'var(--transition)' }}></div>
+               </div>
+               
+               <div className="flex justify-between items-center">
+                 <div style={{ background: 'var(--bg-color)', padding: '6px 12px', borderRadius: 'var(--radius-full)', fontSize: '11px', fontWeight: 'bold', color: 'var(--primary)', border: '1px solid var(--border-subtle)' }}>
+                   Peak: {data.peak}
+                 </div>
+                 <div style={{ color: data.statusColor, fontSize: '12px', fontWeight: 'bold' }}>
+                   {data.status}
+                 </div>
+               </div>
+             </div>
+          ))}
         </div>
       </div>
     </div>

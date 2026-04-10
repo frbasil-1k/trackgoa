@@ -1,26 +1,35 @@
 :root {
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
+  --primary: #0f172a; /* Deep navy almost black for premium contrast */
+  --primary-hover: #1e293b;
+  --accent: #2563eb; /* Blue accent for CTAs */
   --bg-color: #f8fafc;
   --surface: #ffffff;
   --text-main: #0f172a;
   --text-muted: #64748b;
   --border: #e2e8f0;
+  --border-subtle: #f1f5f9;
   --danger: #ef4444;
+  --danger-light: #fee2e2;
   --success: #10b981;
+  --success-light: #dcfce7;
   --warning: #f59e0b;
+  --warning-light: #fef3c7;
+  --live-color: #f43f5e;
   
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
   
-  --radius-sm: 0.25rem;
+  --radius-sm: 0.375rem;
   --radius: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
   --radius-full: 9999px;
   
-  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -30,8 +39,10 @@
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
     --border: #334155;
-    --primary: #3b82f6;
-    --primary-hover: #60a5fa;
+    --border-subtle: #1e293b;
+    --primary: #ffffff;
+    --primary-hover: #f1f5f9;
+    --accent: #3b82f6;
   }
 }
 
@@ -46,12 +57,11 @@ body {
   background-color: var(--bg-color);
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
-  overflow: hidden; /* Prevent scrolling for the PWA feel */
-  user-select: none; /* Prevent text selection in mobile app mode */
-  touch-action: pan-x pan-y; /* Prevent pinch zoom */
+  overflow: hidden; 
+  user-select: none; 
+  touch-action: pan-x pan-y;
 }
 
-/* Mobile-first layout constraint */
 #root {
   display: flex;
   justify-content: center;
@@ -65,7 +75,7 @@ body {
   position: relative;
   width: 100%;
   height: 100%;
-  max-width: 480px; /* Constrain on desktop to mimic mobile */
+  max-width: 480px; 
   background-color: var(--bg-color);
   overflow: hidden;
   box-shadow: var(--shadow-lg);
@@ -73,40 +83,26 @@ body {
   flex-direction: column;
 }
 
-/* Map specific tweaks */
 .leaflet-container {
   width: 100%;
   height: 100%;
   z-index: 10;
-  background-color: #e5e5e5;
+  background-color: #f1f5f9;
 }
 
-/* Dark mode mapping tweak if needed */
-@media (prefers-color-scheme: dark) {
-  .leaflet-layer,
-  .leaflet-control-zoom-in,
-  .leaflet-control-zoom-out,
-  .leaflet-control-attribution {
-    filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
-  }
-}
-
-/* Hide default leaflet attribution to save space, but we'll add custom small one if needed */
 .leaflet-control-attribution {
   display: none;
 }
 
-/* Base utility classes */
 .glass {
-  background: rgba(var(--surface-rgb, 255, 255, 255), 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(var(--border-rgb, 226, 232, 240), 0.2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
 }
 
 @media (prefers-color-scheme: dark) {
   .glass {
-    background: rgba(30, 41, 59, 0.85);
+    background: rgba(30, 41, 59, 0.95);
     border: 1px solid rgba(51, 65, 85, 0.5);
   }
 }
@@ -121,45 +117,77 @@ body {
 .gap-2 { gap: 0.5rem; }
 .gap-3 { gap: 0.75rem; }
 .gap-4 { gap: 1rem; }
+.gap-6 { gap: 1.5rem; }
 
 /* Text Utils */
-.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
 .text-xs { font-size: 0.75rem; line-height: 1rem; }
+.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+.text-base { font-size: 1rem; line-height: 1.5rem; }
 .text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+.text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+.text-2xl { font-size: 1.5rem; line-height: 2rem; }
+.font-medium { font-weight: 500; }
 .font-semibold { font-weight: 600; }
 .font-bold { font-weight: 700; }
 .text-muted { color: var(--text-muted); }
 .text-primary { color: var(--primary); }
+.text-accent { color: var(--accent); }
 
 /* Component level styles */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: var(--surface);
+  color: var(--text-main);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+  white-space: nowrap;
+}
+.pill:active {
+  transform: scale(0.97);
+}
+.pill.active {
+  background: var(--primary);
+  color: var(--surface);
+  box-shadow: var(--shadow);
+}
+
 .bottom-sheet {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
   background-color: var(--surface);
-  border-top-left-radius: var(--radius-lg);
-  border-top-right-radius: var(--radius-lg);
-  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1);
-  z-index: 50; /* Above map */
+  border-top-left-radius: var(--radius-2xl);
+  border-top-right-radius: var(--radius-2xl);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.08);
+  z-index: 50; 
   display: flex;
   flex-direction: column;
-  max-height: 85vh;
+  max-height: 90vh;
+  transition: var(--transition);
 }
 
 .bottom-sheet-handle {
-  width: 40px;
-  height: 5px;
+  width: 48px;
+  height: 4px;
   background-color: var(--border);
   border-radius: var(--radius-full);
-  margin: 12px auto;
+  margin: 16px auto 8px;
 }
 
 .floating-btn {
   position: absolute;
   background-color: var(--surface);
   color: var(--text-main);
-  border: none;
+  border: 1px solid var(--border);
   border-radius: var(--radius-full);
   width: 48px;
   height: 48px;
@@ -167,11 +195,21 @@ body {
   justify-content: center;
   align-items: center;
   box-shadow: var(--shadow-md);
-  z-index: 40; /* Above map, below sheet */
+  z-index: 40; 
   cursor: pointer;
   transition: var(--transition);
 }
 
 .floating-btn:active {
   transform: scale(0.95);
+  background-color: var(--bg-color);
+}
+
+.floating-btn:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Hide scrollbar for clean app feel */
+::-webkit-scrollbar {
+  display: none;
 }

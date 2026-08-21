@@ -84,36 +84,48 @@ class AppNavigationShell extends StatelessWidget {
           AppSpacing.md,
           AppSpacing.xs,
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppSpacing.sheetRadius),
-          child: NavigationBar(
-            selectedIndex: navigationShell.currentIndex,
-            onDestinationSelected: (index) => navigationShell.goBranch(
-              index,
-              initialLocation: index == navigationShell.currentIndex,
-            ),
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home),
-                label: 'Home',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.route_outlined),
-                selectedIcon: Icon(Icons.route),
-                label: 'Routes',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.bookmark_outline),
-                selectedIcon: Icon(Icons.bookmark),
-                label: 'Favorites',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.settings_outlined),
-                selectedIcon: Icon(Icons.settings),
-                label: 'Settings',
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppSpacing.sheetRadius),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x180B2C31),
+                blurRadius: 20,
+                offset: Offset(0, 6),
               ),
             ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppSpacing.sheetRadius),
+            child: NavigationBar(
+              selectedIndex: navigationShell.currentIndex,
+              onDestinationSelected: (index) => navigationShell.goBranch(
+                index,
+                initialLocation: index == navigationShell.currentIndex,
+              ),
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home),
+                  label: 'Home',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.route_outlined),
+                  selectedIcon: Icon(Icons.route),
+                  label: 'Routes',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.bookmark_outline),
+                  selectedIcon: Icon(Icons.bookmark),
+                  label: 'Favorites',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.settings_outlined),
+                  selectedIcon: Icon(Icons.settings),
+                  label: 'Settings',
+                ),
+              ],
+            ),
           ),
         ),
       ),

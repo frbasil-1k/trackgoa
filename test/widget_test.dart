@@ -1,12 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trackgoa/app.dart';
 
 void main() {
   testWidgets('shell navigation switches destinations', (tester) async {
-    await tester.pumpWidget(const TrackGoaApp());
+    await tester.pumpWidget(const ProviderScope(child: TrackGoaApp()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Your journey, in view.'), findsOneWidget);
+    expect(find.text('TrackGoa'), findsOneWidget);
 
     await tester.tap(find.text('Routes'));
     await tester.pumpAndSettle();
@@ -25,7 +26,7 @@ void main() {
 
     await tester.tap(find.text('Home'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Open route tracking'));
+    await tester.tap(find.text('Panaji → Miramar'));
     await tester.pumpAndSettle();
     expect(find.text('Tracking R1'), findsOneWidget);
 

@@ -11,7 +11,7 @@ void main() {
 
     await tester.tap(find.text('Routes'));
     await tester.pumpAndSettle();
-    expect(find.text('Sample Route'), findsOneWidget);
+    expect(find.text('All routes'), findsOneWidget);
 
     await tester.tap(find.text('Favorites'));
     await tester.pumpAndSettle();

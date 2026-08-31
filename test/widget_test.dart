@@ -26,11 +26,18 @@ void main() {
 
     await tester.tap(find.text('Home'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Panaji → Miramar'));
-    await tester.pumpAndSettle();
-    expect(find.text('Tracking R1'), findsOneWidget);
 
-    await tester.tap(find.text('View route analytics'));
+    // Navigate to tracking screen (now has full map implementation)
+    await tester.tap(find.text('Panaji → Miramar'));
+    await tester.pumpAndSettle(const Duration(seconds: 3));
+
+    // Verify tracking screen loaded by checking for route info in bottom sheet
+    expect(find.text('Panaji → Miramar'), findsAtLeastNWidgets(1));
+    expect(find.text('Estimated Travel Time'), findsOneWidget);
+
+    // Test analytics navigation from bottom sheet
+    await tester.ensureVisible(find.text('Analytics'));
+    await tester.tap(find.text('Analytics'));
     await tester.pumpAndSettle();
     expect(find.text('Analytics R1'), findsOneWidget);
   });

@@ -40,6 +40,7 @@ dependencies:
   geolocator: ^14.0.3
   flutter_map: ^8.3.1
   latlong2: ^0.10.1
+  sliding_up_panel: ^2.0.0+1
 
 dev_dependencies:
   flutter_test:

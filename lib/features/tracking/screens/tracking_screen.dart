@@ -10,6 +10,7 @@ import '../providers/map_providers.dart';
 import '../services/map_tile_service.dart';
 import '../widgets/map_controls.dart';
 import '../widgets/route_bottom_sheet.dart';
+import '../widgets/route_info_card.dart';
 import '../widgets/stop_marker_widget.dart';
 
 class TrackingScreen extends ConsumerStatefulWidget {
@@ -87,6 +88,7 @@ class _TrackingScreenState extends ConsumerState<TrackingScreen>
                 Positioned.fill(
                   child: _IsolatedMapView(
                     route: route,
+                    routeId: widget.routeId,
                     bounds: bounds,
                     mapController: mapController,
                     onMapReady: _onMapReady,
@@ -105,7 +107,7 @@ class _TrackingScreenState extends ConsumerState<TrackingScreen>
                     ),
                   ),
 
-                // 3. Top Floating Navigation & Map Controls
+                // 3. Top Floating Navigation
                 Positioned(
                   top: MediaQuery.paddingOf(context).top + AppSpacing.sm,
                   left: AppSpacing.md,
@@ -114,6 +116,15 @@ class _TrackingScreenState extends ConsumerState<TrackingScreen>
                   ),
                 ),
 
+                // 4. Floating Route Info Card
+                Positioned(
+                  top: MediaQuery.paddingOf(context).top + AppSpacing.xs,
+                  left: AppSpacing.lg,
+                  right: AppSpacing.lg,
+                  child: RouteInfoCard(route: route),
+                ),
+
+                // 5. Map Controls
                 MapControls(
                   mapController: mapController,
                   onCenterRoute: () {
@@ -127,7 +138,7 @@ class _TrackingScreenState extends ConsumerState<TrackingScreen>
                   },
                 ),
 
-                // 4. Uber-style Draggable Bottom Sheet with isolated rebuild scope
+                // 6. Sliding Bottom Sheet with isolated rebuild scope
                 RouteBottomSheet(route: route),
               ],
             );
@@ -189,21 +200,25 @@ class _TrackingScreenState extends ConsumerState<TrackingScreen>
 
 /// Independent, isolated map widget wrapped in RepaintBoundary
 /// to prevent rasterization or rebuilding while the bottom sheet scrolls.
-class _IsolatedMapView extends StatelessWidget {
+class _IsolatedMapView extends ConsumerWidget {
   const _IsolatedMapView({
     required this.route,
+    required this.routeId,
     required this.bounds,
     required this.mapController,
     required this.onMapReady,
   });
 
   final RouteModel route;
+  final String routeId;
   final LatLngBounds bounds;
   final MapController mapController;
   final VoidCallback onMapReady;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final simplifiedPolyline = ref.watch(simplifiedPolylineProvider(routeId));
+
     return RepaintBoundary(
       child: FlutterMap(
         mapController: mapController,
@@ -224,11 +239,12 @@ class _IsolatedMapView extends StatelessWidget {
           MapTileService.buildTileLayer(),
 
           // Dual-Layer Route Polyline: Background Glow (~9px) + Main Line (~5px)
+          // Uses simplified polyline for smoother rendering
           PolylineLayer(
             polylines: [
               // Background glow layer (wider, soft opacity)
               Polyline(
-                points: route.polylinePoints,
+                points: simplifiedPolyline,
                 color: route.color.withValues(alpha: 0.22),
                 strokeWidth: 9.0,
                 strokeCap: StrokeCap.round,
@@ -236,7 +252,7 @@ class _IsolatedMapView extends StatelessWidget {
               ),
               // Main route line
               Polyline(
-                points: route.polylinePoints,
+                points: simplifiedPolyline,
                 color: route.color,
                 strokeWidth: 5.0,
                 strokeCap: StrokeCap.round,

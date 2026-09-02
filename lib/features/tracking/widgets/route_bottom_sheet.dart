@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sliding_up_panel/sliding_up_panel.dart';
 
 import '../../../core/router/route_paths.dart';
 import '../../../core/shared/widgets/app_card.dart';
@@ -10,8 +11,8 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/route_model.dart';
 import '../../../data/models/stop_model.dart';
 
-/// Uber-style draggable bottom sheet with rich ETA and route details.
-/// Optimized with RepaintBoundary and modular cached sections to eliminate drag lag.
+/// Google Maps-style sliding panel with smooth dragging and rich route details.
+/// Optimized with RepaintBoundary to eliminate drag lag.
 class RouteBottomSheet extends StatelessWidget {
   const RouteBottomSheet({
     required this.route,
@@ -22,84 +23,101 @@ class RouteBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.45,
-      minChildSize: 0.20,
-      maxChildSize: 0.85,
-      snap: true,
-      snapSizes: const [0.20, 0.45, 0.85],
-      snapAnimationDuration: const Duration(milliseconds: 200),
-      builder: (context, scrollController) {
-        return RepaintBoundary(
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(AppSpacing.sheetRadius),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 32,
-                  spreadRadius: 0,
-                  offset: const Offset(0, -8),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 16,
-                  spreadRadius: 0,
-                  offset: const Offset(0, -4),
-                ),
-              ],
+    final screenHeight = MediaQuery.sizeOf(context).height;
+
+    return SlidingUpPanel(
+      minHeight: screenHeight * 0.20,
+      maxHeight: screenHeight * 0.85,
+      snapPoint: 0.45,
+      borderRadius: const BorderRadius.vertical(
+        top: Radius.circular(AppSpacing.sheetRadius),
+      ),
+      backdropEnabled: false,
+      parallaxEnabled: false,
+      parallaxOffset: 0.0,
+      isDraggable: true,
+      renderPanelSheet: true,
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.10),
+          blurRadius: 40,
+          spreadRadius: 0,
+          offset: const Offset(0, -8),
+        ),
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.06),
+          blurRadius: 20,
+          spreadRadius: 0,
+          offset: const Offset(0, -4),
+        ),
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.04),
+          blurRadius: 10,
+          spreadRadius: 0,
+          offset: const Offset(0, -2),
+        ),
+      ],
+      panelBuilder: (scrollController) => RepaintBoundary(
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppSpacing.sheetRadius),
             ),
-            child: ListView(
-              controller: scrollController,
-              physics: const ClampingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.xs,
-                AppSpacing.md,
-                AppSpacing.xl,
+            border: Border(
+              top: BorderSide(
+                color: Colors.black.withValues(alpha: 0.05),
+                width: 1,
               ),
-              children: [
-                // 1. Drag Handle
-                const _DragHandle(),
-
-                // 2. Header with Hero Badge
-                _BottomSheetHeader(route: route),
-
-                const SizedBox(height: AppSpacing.md),
-
-                // 3. Large Uber-style ETA Highlight Card
-                _EtaHighlightCard(
-                  estimatedTravelMinutes: route.estimatedTravelMinutes,
-                ),
-
-                const SizedBox(height: AppSpacing.md),
-
-                // 4. Quick Action Buttons Row
-                _ActionButtonsRow(route: route),
-
-                const SizedBox(height: AppSpacing.lg),
-
-                // 5. Route Stops Timeline
-                Text(
-                  'Route Stops',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-
-                _StopsTimelineList(
-                  stops: route.stops,
-                  routeColor: route.color,
-                ),
-              ],
             ),
           ),
-        );
-      },
+          child: ListView(
+            controller: scrollController,
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.xs,
+              AppSpacing.md,
+              AppSpacing.xl,
+            ),
+            children: [
+              // 1. Drag Handle
+              const _DragHandle(),
+
+              // 2. Header with Hero Badge
+              _BottomSheetHeader(route: route),
+
+              const SizedBox(height: AppSpacing.md),
+
+              // 3. Large Uber-style ETA Highlight Card
+              _EtaHighlightCard(
+                estimatedTravelMinutes: route.estimatedTravelMinutes,
+              ),
+
+              const SizedBox(height: AppSpacing.md),
+
+              // 4. Quick Action Buttons Row
+              _ActionButtonsRow(route: route),
+
+              const SizedBox(height: AppSpacing.lg),
+
+              // 5. Route Stops Timeline
+              Text(
+                'Route Stops',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              _StopsTimelineList(
+                stops: route.stops,
+                routeColor: route.color,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -111,12 +129,19 @@ class _DragHandle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Container(
-        width: 36,
-        height: 4,
+        width: 40,
+        height: 5,
         margin: const EdgeInsets.only(bottom: AppSpacing.sm),
         decoration: BoxDecoration(
-          color: AppColors.inactive.withValues(alpha: 0.25),
-          borderRadius: BorderRadius.circular(2),
+          color: AppColors.inactive.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(2.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 2,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
       ),
     );

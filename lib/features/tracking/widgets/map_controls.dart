@@ -21,59 +21,36 @@ class MapControls extends StatelessWidget {
       right: AppSpacing.md,
       child: Column(
         children: [
-          _buildAnimatedControl(
-            delay: 0,
-            child: _GlassButton(
-              icon: Icons.add_rounded,
-              onPressed: () {
-                final currentZoom = mapController.camera.zoom;
-                mapController.move(
-                  mapController.camera.center,
-                  (currentZoom + 1).clamp(10.0, 18.0),
-                );
-              },
-            ),
+          // Removed TweenAnimationBuilder animations - controls appear instantly
+          // This reduces animation overhead on screen load
+          _GlassButton(
+            icon: Icons.add_rounded,
+            onPressed: () {
+              final currentZoom = mapController.camera.zoom;
+              mapController.move(
+                mapController.camera.center,
+                (currentZoom + 1).clamp(10.0, 18.0),
+              );
+            },
           ),
           const SizedBox(height: AppSpacing.xs),
-          _buildAnimatedControl(
-            delay: 40,
-            child: _GlassButton(
-              icon: Icons.remove_rounded,
-              onPressed: () {
-                final currentZoom = mapController.camera.zoom;
-                mapController.move(
-                  mapController.camera.center,
-                  (currentZoom - 1).clamp(10.0, 18.0),
-                );
-              },
-            ),
+          _GlassButton(
+            icon: Icons.remove_rounded,
+            onPressed: () {
+              final currentZoom = mapController.camera.zoom;
+              mapController.move(
+                mapController.camera.center,
+                (currentZoom - 1).clamp(10.0, 18.0),
+              );
+            },
           ),
           const SizedBox(height: AppSpacing.sm),
-          _buildAnimatedControl(
-            delay: 80,
-            child: _GlassButton(
-              icon: Icons.my_location_rounded,
-              onPressed: onCenterRoute,
-            ),
+          _GlassButton(
+            icon: Icons.my_location_rounded,
+            onPressed: onCenterRoute,
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildAnimatedControl({required int delay, required Widget child}) {
-    return TweenAnimationBuilder<double>(
-      duration: Duration(milliseconds: 180 + delay),
-      curve: Curves.easeOut,
-      tween: Tween(begin: 0.0, end: 1.0),
-      builder: (context, value, child) => Opacity(
-        opacity: value,
-        child: Transform.translate(
-          offset: Offset(20 * (1 - value), 0),
-          child: child,
-        ),
-      ),
-      child: child,
     );
   }
 }
@@ -136,20 +113,12 @@ class _GlassButtonState extends State<_GlassButton>
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.96),
           shape: BoxShape.circle,
-          boxShadow: [
-            // Soft primary shadow
+          boxShadow: const [
+            // Single shadow for better performance
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 16,
-              spreadRadius: 0,
-              offset: const Offset(0, 4),
-            ),
-            // Subtle depth shadow
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              spreadRadius: 0,
-              offset: const Offset(0, 2),
+              color: Color(0x0F000000),
+              blurRadius: 12,
+              offset: Offset(0, 3),
             ),
           ],
         ),

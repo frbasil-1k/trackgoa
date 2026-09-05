@@ -12,7 +12,7 @@ import '../../features/tracking/services/polyline_navigation_service.dart';
 /// ```dart
 /// final simplified = PolylineSimplifier.simplify(
 ///   originalPoints,
-///   epsilon: 8.0, // 8 meters tolerance
+///   epsilon: 2.5, // 2–3 meters tolerance
 /// );
 /// ```
 class PolylineSimplifier {

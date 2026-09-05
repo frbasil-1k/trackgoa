@@ -79,33 +79,36 @@ void main() {
     });
   });
 
-  group('PolylineSimplifier (Phase 5.6)', () {
+  group('PolylineSimplifier (Phase 5.11 / Phase 5.6)', () {
     test('simplify preserves start and end points', () {
       final r1 = mockRoutes.firstWhere((r) => r.id == 'r1');
       final original = r1.polylinePoints;
-      final simplified = PolylineSimplifier.simplify(original, epsilon: 8.0);
+      final simplified = PolylineSimplifier.simplify(original, epsilon: 2.5);
 
       expect(simplified.first, original.first);
       expect(simplified.last, original.last);
     });
 
-    test('simplified polylines have fewer points than originals', () {
-      for (final route in mockRoutes) {
-        final original = route.polylinePoints;
-        final simplified = PolylineSimplifier.simplify(original, epsilon: 8.0);
+    test('simplified polylines with 2.5m epsilon preserve authentic road geometry curves', () {
+      final r1 = mockRoutes.firstWhere((r) => r.id == 'r1');
+      final original = r1.polylinePoints;
+      final simplified = PolylineSimplifier.simplify(original, epsilon: 2.5);
 
-        expect(simplified.length, lessThan(original.length));
-        // Should reduce significantly (at least 40% reduction)
-        expect(simplified.length, lessThan(original.length * 0.6));
-      }
+      // 2.5m tolerance preserves rich curves (keeps between 70 and 120 points from 163)
+      expect(simplified.length, greaterThanOrEqualTo(60));
+      expect(simplified.length, lessThanOrEqualTo(130));
+      expect(simplified.first, original.first);
+      expect(simplified.last, original.last);
     });
 
-    test('simplified polylines reduce R1 from 163 to ~40-60 points', () {
-      final r1 = mockRoutes.firstWhere((r) => r.id == 'r1');
-      final simplified = PolylineSimplifier.simplify(r1.polylinePoints, epsilon: 8.0);
+    test('simplified polylines have fewer points than originals across all routes', () {
+      for (final route in mockRoutes) {
+        final original = route.polylinePoints;
+        final simplified = PolylineSimplifier.simplify(original, epsilon: 2.5);
 
-      expect(simplified.length, greaterThanOrEqualTo(30));
-      expect(simplified.length, lessThanOrEqualTo(70));
+        expect(simplified.length, lessThan(original.length));
+        expect(simplified.length, greaterThan(2)); // Must NEVER be flattened to a straight line
+      }
     });
 
     test('simplification with very small epsilon keeps most points', () {

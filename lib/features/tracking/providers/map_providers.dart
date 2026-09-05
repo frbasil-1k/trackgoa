@@ -22,8 +22,8 @@ final selectedRouteProvider =
 
 /// Provides simplified polyline for rendering (computed once and cached).
 ///
-/// Uses Douglas-Peucker algorithm with 8m tolerance to reduce point count
-/// while preserving road shape. Original polyline kept for Phase 6 navigation.
+/// Uses Douglas-Peucker algorithm with 2.5m tolerance to reduce point count
+/// while preserving road shape and intricate curves. Original polyline kept for Phase 6 navigation.
 final simplifiedPolylineProvider =
     Provider.autoDispose.family<List<LatLng>, String>((ref, routeId) {
   final routeAsync = ref.watch(selectedRouteProvider(routeId));
@@ -31,7 +31,7 @@ final simplifiedPolylineProvider =
   return routeAsync.when(
     data: (route) {
       if (route == null) return [];
-      return PolylineSimplifier.simplify(route.polylinePoints, epsilon: 8.0);
+      return PolylineSimplifier.simplify(route.polylinePoints, epsilon: 2.5);
     },
     loading: () => [],
     error: (e, _) => [],

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trackgoa/app.dart';
@@ -29,14 +30,21 @@ void main() {
 
     // Navigate to tracking screen (now has full map implementation)
     await tester.tap(find.text('Panaji → Miramar'));
-    await tester.pumpAndSettle(const Duration(seconds: 3));
+    // Use pump (not pumpAndSettle) — the bus animation ticker runs every
+    // frame so the screen never settles.
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
 
     // Verify tracking screen loaded by checking for route info in bottom sheet
     expect(find.text('Panaji → Miramar'), findsAtLeastNWidgets(1));
     expect(find.text('Estimated Travel Time'), findsOneWidget);
 
-    // Test analytics navigation from bottom sheet
-    await tester.ensureVisible(find.text('Analytics'));
+    // Find analytics button and test navigation
+    await tester.drag(find.byType(ListView).last, const Offset(0, -200));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Analytics'), findsOneWidget);
     await tester.tap(find.text('Analytics'));
     await tester.pumpAndSettle();
     expect(find.text('Analytics R1'), findsOneWidget);

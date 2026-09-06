@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/analytics_model.dart';
 import '../models/bus_position.dart';
 import '../sources/bus_data_source.dart';
 import '../sources/mock_route_data_source.dart';
 import '../sources/route_data_source.dart';
 import '../sources/simulated_bus_data_source.dart';
+import 'analytics_repository.dart';
 import 'bus_repository.dart';
 import 'route_repository.dart';
 import '../../features/tracking/services/bus_simulation_engine.dart';
@@ -89,3 +91,23 @@ class MockBusDataSource implements BusDataSource {
   Stream<List<BusPosition>> watchBusPositions(String routeId) =>
       Stream.value(const <BusPosition>[]);
 }
+
+// ─── Phase 6.4 — Analytics ───────────────────────────────────────────────────
+
+/// Data source provider — swap this for a real REST/WebSocket source later.
+final analyticsRepositoryProvider = Provider<AnalyticsRepository>(
+  (ref) => const MockAnalyticsRepository(),
+);
+
+/// All route analytics bundles.
+final allAnalyticsProvider = FutureProvider<List<AnalyticsBundle>>((ref) async {
+  final repo = ref.watch(analyticsRepositoryProvider);
+  return repo.getAllAnalytics();
+});
+
+/// Analytics bundle for a specific route.
+final analyticsForRouteProvider =
+    FutureProvider.family<AnalyticsBundle?, String>((ref, routeId) async {
+  final repo = ref.watch(analyticsRepositoryProvider);
+  return repo.getAnalyticsForRoute(routeId);
+});

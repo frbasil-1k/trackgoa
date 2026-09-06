@@ -85,6 +85,11 @@ class _TrackingScreenState extends ConsumerState<TrackingScreen>
               return _buildErrorState();
             }
 
+            // Record this route as recently viewed.
+            Future.microtask(() => ref
+                .read(favoritesNotifierProvider.notifier)
+                .touchRecent(widget.routeId));
+
             final allPoints = [
               ...route.polylinePoints,
               ...route.stops.map((s) => s.coordinates),

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/router/route_paths.dart';
 import '../../../core/shared/widgets/app_card.dart';
 import '../../../core/shared/widgets/city_chip.dart';
+import '../../../core/shared/widgets/favorite_icon_button.dart';
 import '../../../core/shared/widgets/primary_search_bar.dart';
 import '../../../core/shared/widgets/route_card.dart';
 import '../../../core/shared/widgets/section_header.dart';
@@ -12,6 +13,7 @@ import '../../../core/shared/widgets/status_pill.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/route_model.dart';
+import '../../../data/repositories/repository_providers.dart';
 import '../providers/home_providers.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -148,9 +150,9 @@ class _HomeContent extends StatelessWidget {
             ),
           ),
       const SizedBox(height: AppSpacing.sm),
-      const SectionHeader(title: 'Favorites'),
+      const SectionHeader(title: 'Favorite Routes'),
       const SizedBox(height: AppSpacing.xs),
-      const _FavoritesPreview(),
+      _FavoritesPreview(routes: routes),
       const SizedBox(height: AppSpacing.sm),
       _BandwidthToggle(value: lowBandwidth, onChanged: onBandwidthChanged),
     ],
@@ -235,34 +237,170 @@ class _NearbyBusCard extends StatelessWidget {
   }
 }
 
-class _FavoritesPreview extends StatelessWidget {
-  const _FavoritesPreview();
+class _FavoritesPreview extends ConsumerWidget {
+  const _FavoritesPreview({required this.routes});
+  final List<RouteModel> routes;
+
   @override
-  Widget build(BuildContext context) => AppCard(
-    child: Row(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favorites = ref.watch(favoritesNotifierProvider);
+
+    if (favorites.favoriteRouteIds.isEmpty) {
+      return _EmptyFavoritesHint();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.bookmark_border_rounded, color: AppColors.primary),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Your shortcuts, ready when you are.',
-                style: Theme.of(context).textTheme.titleMedium,
+        ...favorites.favoriteRouteIds.map((id) {
+          final route = routes.firstWhere(
+            (r) => r.id == id,
+            orElse: () => routes.first,
+          );
+          final reliability = 92 - (route.id.hashCode.abs() % 10);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: AppCard(
+              onTap: () async {
+                await ref
+                    .read(favoritesNotifierProvider.notifier)
+                    .touchRecent(route.id);
+                if (context.mounted) {
+                  context.push(RoutePaths.trackingFor(route.id));
+                }
+              },
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: route.color.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      route.shortName,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: route.color,
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${route.origin} → ${route.destination}',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Row(
+                          children: [
+                            const Icon(Icons.access_time_rounded,
+                                size: 11, color: AppColors.textSecondary),
+                            const SizedBox(width: 2),
+                            Text(
+                              '~${route.estimatedTravelMinutes} min',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              width: 4,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: AppColors.textSecondary.withValues(alpha: 0.5),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '$reliability% reliable',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  FavoriteIconButton(routeId: route.id, size: 32, iconSize: 16),
+                ],
               ),
-              const SizedBox(height: AppSpacing.xxs),
-              Text(
-                'Save routes for quick access.',
-                style: Theme.of(context).textTheme.bodySmall,
+            ),
+          );
+        }),
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => context.push(RoutePaths.favorites),
+              icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+              label: const Text('View all'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
               ),
-            ],
+            ),
           ),
         ),
-        const Icon(Icons.add_circle_outline_rounded, color: AppColors.primary),
       ],
-    ),
-  );
+    );
+  }
+}
+
+class _EmptyFavoritesHint extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.primaryContainer.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.bookmark_border_rounded,
+                color: AppColors.primary, size: 24),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Save your favorite routes',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Tap the bookmark icon on any route to add it here.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => context.push(RoutePaths.favorites),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+            ),
+            child: const Text('Open'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _BandwidthToggle extends StatelessWidget {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/shared/widgets/favorite_icon_button.dart';
 import '../../../core/shared/widgets/live_badge.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/route_model.dart';
@@ -107,6 +108,9 @@ class RouteInfoCard extends StatelessWidget {
 
               // Live Badge
               const LiveBadge(),
+              const SizedBox(width: AppSpacing.xs),
+              // Favorite Button
+              FavoriteIconButton(routeId: route.id, size: 32, iconSize: 16),
             ],
           ),
         ),

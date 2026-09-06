@@ -1,11 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackgoa/app.dart';
+import 'package:trackgoa/data/repositories/repository_providers.dart';
 
 void main() {
   testWidgets('shell navigation switches destinations', (tester) async {
-    await tester.pumpWidget(const ProviderScope(child: TrackGoaApp()));
+    // Phase 6.5 — Mock SharedPreferences for widget tests.
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+        ],
+        child: const TrackGoaApp(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('TrackGoa'), findsOneWidget);
@@ -16,7 +29,7 @@ void main() {
 
     await tester.tap(find.text('Favorites'));
     await tester.pumpAndSettle();
-    expect(find.text('Saved routes will appear here.'), findsOneWidget);
+    expect(find.text('No saved routes yet'), findsOneWidget);
 
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();

@@ -1,13 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/analytics_model.dart';
 import '../models/bus_position.dart';
+import '../models/favorites_model.dart';
 import '../sources/bus_data_source.dart';
 import '../sources/mock_route_data_source.dart';
 import '../sources/route_data_source.dart';
 import '../sources/simulated_bus_data_source.dart';
 import 'analytics_repository.dart';
 import 'bus_repository.dart';
+import 'favorites_repository.dart';
 import 'route_repository.dart';
 import '../../features/tracking/services/bus_simulation_engine.dart';
 
@@ -110,4 +114,55 @@ final analyticsForRouteProvider =
     FutureProvider.family<AnalyticsBundle?, String>((ref, routeId) async {
   final repo = ref.watch(analyticsRepositoryProvider);
   return repo.getAnalyticsForRoute(routeId);
+});
+
+// ─── Phase 6.5 — Favorites ─────────────────────────────────────────────────────
+
+/// SharedPreferences instance — initialized once at app startup.
+final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
+  throw UnimplementedError(
+    'SharedPreferences must be overridden in ProviderScope.overrides',
+  );
+});
+
+/// Favorites repository wired to the persisted SharedPreferences instance.
+final favoritesRepositoryProvider = Provider<FavoritesRepository>((ref) {
+  return FavoritesRepository(ref.watch(sharedPreferencesProvider));
+});
+
+/// In-memory favorites state — persisted to SharedPreferences on every mutation.
+class FavoritesNotifier extends StateNotifier<FavoritesState> {
+  FavoritesNotifier(this._repo) : super(_repo.load());
+
+  final FavoritesRepository _repo;
+
+  /// Toggles [routeId] in/out of favorites. Returns the updated state.
+  Future<FavoritesState> toggleFavorite(String routeId) async {
+    state = await _repo.toggleFavorite(state, routeId);
+    return state;
+  }
+
+  /// Records that the user opened [routeId] and moves it to the front of recents.
+  Future<FavoritesState> touchRecent(String routeId) async {
+    state = await _repo.touchRecent(state, routeId);
+    return state;
+  }
+
+  /// Removes [routeId] from both favorites and recents.
+  Future<FavoritesState> removeRoute(String routeId) async {
+    state = await _repo.removeAll(routeId);
+    return state;
+  }
+}
+
+/// Global favorites state notifier, shared across all consumers.
+final favoritesNotifierProvider =
+    StateNotifierProvider<FavoritesNotifier, FavoritesState>((ref) {
+  final repo = ref.watch(favoritesRepositoryProvider);
+  return FavoritesNotifier(repo);
+});
+
+/// Convenience: is [routeId] currently a favorite?
+final isFavoriteProvider = Provider.family<bool, String>((ref, routeId) {
+  return ref.watch(favoritesNotifierProvider).isFavorite(routeId);
 });

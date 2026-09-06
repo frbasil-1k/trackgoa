@@ -37,7 +37,8 @@ void main() {
 
     // Verify tracking screen loaded by checking for route info in bottom sheet
     expect(find.text('Panaji → Miramar'), findsAtLeastNWidgets(1));
-    expect(find.text('Estimated Travel Time'), findsOneWidget);
+    // Live ETA card is now shown with a 'Live' status pill
+    expect(find.text('Live'), findsOneWidget);
 
     // Find analytics button and test navigation
     await tester.drag(find.byType(ListView).last, const Offset(0, -200));

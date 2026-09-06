@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/route_paths.dart';
@@ -7,8 +8,12 @@ import '../../../core/shared/widgets/live_badge.dart';
 import '../../../core/shared/widgets/status_pill.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../data/models/alert_model.dart';
 import '../../../data/models/route_model.dart';
 import '../../../data/models/stop_model.dart';
+import '../providers/eta_providers.dart';
+import '../services/eta_calculation_service.dart';
+import '../services/live_alert_service.dart';
 
 /// Drag state notifier for map freeze coordination
 class DragStateNotifier extends ChangeNotifier {
@@ -25,7 +30,7 @@ class DragStateNotifier extends ChangeNotifier {
 }
 
 /// Native Flutter bottom sheet with drag detection for map freeze.
-class RouteBottomSheet extends StatefulWidget {
+class RouteBottomSheet extends ConsumerStatefulWidget {
   const RouteBottomSheet({
     required this.route,
     required this.dragNotifier,
@@ -36,13 +41,14 @@ class RouteBottomSheet extends StatefulWidget {
   final DragStateNotifier dragNotifier;
 
   @override
-  State<RouteBottomSheet> createState() => _RouteBottomSheetState();
+  ConsumerState<RouteBottomSheet> createState() => _RouteBottomSheetState();
 }
 
-class _RouteBottomSheetState extends State<RouteBottomSheet>
+class _RouteBottomSheetState extends ConsumerState<RouteBottomSheet>
     with SingleTickerProviderStateMixin {
   late AnimationController _dragController;
   double _dragPosition = 0.0;
+  late final LiveAlertService _alertService;
 
   @override
   void initState() {
@@ -52,16 +58,91 @@ class _RouteBottomSheetState extends State<RouteBottomSheet>
       duration: const Duration(milliseconds: 250),
       value: 0.0,
     );
+    _alertService = LiveAlertService(
+      onAlert: _showAlertSnackbar,
+    );
   }
 
   @override
   void dispose() {
     _dragController.dispose();
+    _alertService.reset();
     super.dispose();
   }
 
+  void _showAlertSnackbar(AlertModel alert) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              _alertIcon(alert.type),
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                alert.message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: _alertColor(alert.type),
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.controlRadius),
+        ),
+        margin: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          0,
+          AppSpacing.md,
+          320,
+        ),
+      ),
+    );
+  }
+
+  IconData _alertIcon(AlertType type) {
+    switch (type) {
+      case AlertType.twoStopsAway:
+        return Icons.notifications_active_outlined;
+      case AlertType.oneStopAway:
+        return Icons.directions_bus_rounded;
+      case AlertType.reached:
+        return Icons.check_circle_outline;
+      case AlertType.delayed:
+        return Icons.access_time;
+      case AlertType.slowdown:
+        return Icons.warning_amber_outlined;
+    }
+  }
+
+  Color _alertColor(AlertType type) {
+    switch (type) {
+      case AlertType.twoStopsAway:
+        return AppColors.primary;
+      case AlertType.oneStopAway:
+        return AppColors.accent;
+      case AlertType.reached:
+        return AppColors.success;
+      case AlertType.delayed:
+        return AppColors.warning;
+      case AlertType.slowdown:
+        return AppColors.warning;
+    }
+  }
+
   void _onVerticalDragStart(DragStartDetails details) {
-    // Notify map to freeze rendering
     widget.dragNotifier.setDragging(true);
   }
 
@@ -77,7 +158,6 @@ class _RouteBottomSheetState extends State<RouteBottomSheet>
   }
 
   void _onVerticalDragEnd(DragEndDetails details) {
-    // Notify map to resume rendering
     widget.dragNotifier.setDragging(false);
 
     final velocity = details.primaryVelocity ?? 0;
@@ -105,6 +185,21 @@ class _RouteBottomSheetState extends State<RouteBottomSheet>
     final dragRange = maxHeight - minHeight;
 
     final currentHeight = minHeight + (_dragPosition * dragRange);
+
+    // Listen to live stops progress and fire alerts on threshold crossings.
+    ref.listen<AsyncValue<List<StopProgress>>>(
+      liveStopsProvider(widget.route.id),
+      (_, next) {
+        final stops = next.value;
+        if (stops == null || stops.isEmpty) return;
+        final selectedStopId = ref.read(selectedStopIdProvider(widget.route.id));
+        _alertService.processStopsProgress(
+          routeId: widget.route.id,
+          selectedStopId: selectedStopId,
+          stopsProgress: stops,
+        );
+      },
+    );
 
     return Positioned(
       left: 0,
@@ -138,20 +233,30 @@ class _RouteBottomSheetState extends State<RouteBottomSheet>
               child: child,
             );
           },
-          child: _PanelContent(route: widget.route),
+          child: _PanelContent(
+            route: widget.route,
+            onSelectStop: (stopId) {
+              ref.read(selectedStopIdProvider(widget.route.id).notifier).state = stopId;
+              _alertService.resetForStop(stopId);
+            },
+          ),
         ),
       ),
     );
   }
 }
 
-class _PanelContent extends StatelessWidget {
-  const _PanelContent({required this.route});
+class _PanelContent extends ConsumerWidget {
+  const _PanelContent({
+    required this.route,
+    required this.onSelectStop,
+  });
 
   final RouteModel route;
+  final ValueChanged<String> onSelectStop;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       children: [
         const _DragHandle(),
@@ -166,9 +271,7 @@ class _PanelContent extends StatelessWidget {
             children: [
               _BottomSheetHeader(route: route),
               const SizedBox(height: AppSpacing.md),
-              _EtaHighlightCard(
-                estimatedTravelMinutes: route.estimatedTravelMinutes,
-              ),
+              _LiveEtaCard(routeId: route.id),
               const SizedBox(height: AppSpacing.md),
               _ActionButtonsRow(route: route),
               const SizedBox(height: AppSpacing.lg),
@@ -180,8 +283,10 @@ class _PanelContent extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.sm),
               _StopsTimelineList(
+                routeId: route.id,
                 stops: route.stops,
                 routeColor: route.color,
+                onSelectStop: onSelectStop,
               ),
             ],
           ),
@@ -280,13 +385,20 @@ class _BottomSheetHeader extends StatelessWidget {
   }
 }
 
-class _EtaHighlightCard extends StatelessWidget {
-  const _EtaHighlightCard({required this.estimatedTravelMinutes});
+/// Live ETA card showing next stop, ETA, speed, and stops remaining.
+///
+/// Watches [routeProgressSummaryProvider] for live updates.
+class _LiveEtaCard extends ConsumerWidget {
+  const _LiveEtaCard({required this.routeId});
 
-  final int estimatedTravelMinutes;
+  final String routeId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summaryAsync = ref.watch(routeProgressSummaryProvider(routeId));
+
+    final summary = summaryAsync.value;
+
     return AppCard(
       child: Row(
         children: [
@@ -298,7 +410,7 @@ class _EtaHighlightCard extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: const Icon(
-              Icons.timer_outlined,
+              Icons.directions_bus_rounded,
               color: AppColors.primary,
               size: 24,
             ),
@@ -309,29 +421,34 @@ class _EtaHighlightCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Estimated Travel Time',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  summary?.nextStopName ?? 'Waiting for bus…',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text(
-                      '~$estimatedTravelMinutes',
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 26,
-                          ),
+                    _LiveMetricChip(
+                      icon: Icons.timer_outlined,
+                      label: summary?.nextStopEtaLabel ?? '—',
+                      color: AppColors.primary,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'mins',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
+                    const SizedBox(width: AppSpacing.xs),
+                    _LiveMetricChip(
+                      icon: Icons.speed_rounded,
+                      label: summary?.speedLabel ?? '—',
+                      color: AppColors.accent,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    _LiveMetricChip(
+                      icon: Icons.location_on_outlined,
+                      label: summary == null
+                          ? '—'
+                          : '${summary.stopsRemaining} left',
+                      color: AppColors.success,
                     ),
                   ],
                 ),
@@ -339,8 +456,46 @@ class _EtaHighlightCard extends StatelessWidget {
             ),
           ),
           const StatusPill(
-            label: 'On Time',
+            label: 'Live',
             color: AppColors.success,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveMetricChip extends StatelessWidget {
+  const _LiveMetricChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -401,17 +556,31 @@ class _ActionButtonsRow extends StatelessWidget {
   }
 }
 
-class _StopsTimelineList extends StatelessWidget {
+class _StopsTimelineList extends ConsumerWidget {
   const _StopsTimelineList({
+    required this.routeId,
     required this.stops,
     required this.routeColor,
+    required this.onSelectStop,
   });
 
+  final String routeId;
   final List<StopModel> stops;
   final Color routeColor;
+  final ValueChanged<String> onSelectStop;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stopsAsync = ref.watch(liveStopsProvider(routeId));
+    final liveStops = stopsAsync.value;
+    // Build a lookup: stopId -> StopProgress for the live state.
+    final progressById = <String, StopProgress>{};
+    if (liveStops != null) {
+      for (final sp in liveStops) {
+        progressById[sp.stop.id] = sp;
+      }
+    }
+
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -420,12 +589,15 @@ class _StopsTimelineList extends StatelessWidget {
         final stop = stops[index];
         final isFirst = index == 0;
         final isLast = index == stops.length - 1;
+        final progress = progressById[stop.id];
 
         return _StopTimelineItem(
           stop: stop,
           isFirst: isFirst,
           isLast: isLast,
           routeColor: routeColor,
+          progress: progress,
+          onTap: () => onSelectStop(stop.id),
         );
       },
     );
@@ -438,81 +610,152 @@ class _StopTimelineItem extends StatelessWidget {
     required this.isFirst,
     required this.isLast,
     required this.routeColor,
+    required this.progress,
+    required this.onTap,
   });
 
   final StopModel stop;
   final bool isFirst;
   final bool isLast;
   final Color routeColor;
+  final StopProgress? progress;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 48,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 32,
-            height: 48,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (!isFirst)
-                  Positioned(
-                    top: 0,
-                    child: Container(
-                      width: 2,
-                      height: 24,
-                      color: AppColors.outline,
-                    ),
-                  ),
-                Container(
-                  width: isFirst || isLast ? 14 : 10,
-                  height: isFirst || isLast ? 14 : 10,
-                  decoration: BoxDecoration(
-                    color: isFirst || isLast ? routeColor : Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isFirst || isLast ? Colors.white : routeColor,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                if (!isLast)
-                  Positioned(
-                    bottom: 0,
-                    child: Container(
-                      width: 2,
-                      height: 24,
-                      color: AppColors.outline,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    stop.name,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: isFirst || isLast
-                              ? FontWeight.w600
-                              : FontWeight.normal,
+    final state = progress?.state ?? StopProgressState.upcoming;
+    final isPassed = state == StopProgressState.passed;
+    final isCurrent = state == StopProgressState.current;
+    final isUpcoming = state == StopProgressState.upcoming;
+
+    final dotColor = isPassed
+        ? AppColors.inactive
+        : (isCurrent ? routeColor : routeColor.withValues(alpha: 0.45));
+    final dotBorderColor = isPassed ? AppColors.inactive : routeColor;
+    final lineColor = isPassed
+        ? AppColors.inactive.withValues(alpha: 0.35)
+        : AppColors.outline;
+    final textStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+          fontWeight: isCurrent
+              ? FontWeight.w700
+              : (isFirst || isLast
+                  ? FontWeight.w600
+                  : (isPassed ? FontWeight.w400 : FontWeight.normal)),
+          color: isPassed
+              ? AppColors.textSecondary.withValues(alpha: 0.6)
+              : (isCurrent
+                  ? AppColors.textPrimary
+                  : AppColors.textPrimary),
+          decoration: isPassed ? TextDecoration.lineThrough : null,
+        );
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSpacing.controlRadius),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: SizedBox(
+          height: 56,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 32,
+                height: 56,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (!isFirst)
+                      Positioned(
+                        top: 0,
+                        child: Container(
+                          width: 2,
+                          height: 28,
+                          color: lineColor,
                         ),
-                  ),
+                      ),
+                    if (isCurrent)
+                      Positioned(
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: routeColor.withValues(alpha: 0.18),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                    Container(
+                      width: isFirst || isLast || isCurrent ? 14 : 10,
+                      height: isFirst || isLast || isCurrent ? 14 : 10,
+                      decoration: BoxDecoration(
+                        color: isPassed ? AppColors.inactive : dotColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isCurrent
+                              ? routeColor
+                              : (isFirst || isLast
+                                  ? Colors.white
+                                  : dotBorderColor),
+                          width: isCurrent ? 3 : 2,
+                        ),
+                      ),
+                    ),
+                    if (!isLast)
+                      Positioned(
+                        bottom: 0,
+                        child: Container(
+                          width: 2,
+                          height: 28,
+                          color: lineColor,
+                        ),
+                      ),
+                  ],
                 ),
-                if (isFirst)
-                  const StatusPill(label: 'Origin', color: AppColors.primary)
-                else if (isLast)
-                  const StatusPill(label: 'Destination', color: AppColors.accent),
-              ],
-            ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        stop.name,
+                        style: textStyle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isFirst)
+                      const StatusPill(
+                        label: 'Origin',
+                        color: AppColors.primary,
+                      )
+                    else if (isLast)
+                      const StatusPill(
+                        label: 'Destination',
+                        color: AppColors.accent,
+                      )
+                    else if (isCurrent)
+                      StatusPill(
+                        label: progress?.etaLabel ?? 'Here',
+                        color: AppColors.success,
+                      )
+                    else if (isUpcoming && progress != null)
+                      StatusPill(
+                        label: progress!.etaLabel,
+                        color: AppColors.primary,
+                      )
+                    else if (isPassed)
+                      const StatusPill(
+                        label: 'Passed',
+                        color: AppColors.inactive,
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

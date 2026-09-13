@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/models/route_model.dart';
-import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import 'app_card.dart';
 import 'favorite_icon_button.dart';
@@ -72,7 +71,7 @@ class RouteCard extends StatelessWidget {
           FavoriteIconButton(routeId: route.id, size: 36, iconSize: 18),
         ] else
           const SizedBox(width: AppSpacing.sm),
-        const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+        Icon(Icons.chevron_right_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant),
       ],
     ),
   );

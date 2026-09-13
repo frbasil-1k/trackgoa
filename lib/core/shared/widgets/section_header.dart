@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_colors.dart';
-
 /// Consistent title row for grouped content on feature screens.
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
@@ -24,7 +22,9 @@ class SectionHeader extends StatelessWidget {
       if (actionLabel != null)
         TextButton(
           onPressed: onAction,
-          style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.primary,
+          ),
           child: Text(actionLabel!),
         ),
     ],

@@ -26,7 +26,7 @@ class FavoritesScreen extends ConsumerWidget {
     final allRoutesAsync = ref.watch(homeRoutesProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: CustomScrollView(
         slivers: [
           _FavoritesSliverAppBar(),
@@ -110,10 +110,11 @@ class FavoritesScreen extends ConsumerWidget {
 class _FavoritesSliverAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return SliverAppBar(
       expandedHeight: 120,
       pinned: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: colorScheme.surface,
       surfaceTintColor: Colors.transparent,
       leading: Padding(
         padding: const EdgeInsets.only(left: AppSpacing.sm),
@@ -122,15 +123,15 @@ class _FavoritesSliverAppBar extends StatelessWidget {
           icon: Container(
             width: 40,
             height: 40,
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
               shape: BoxShape.circle,
               boxShadow: [
-                BoxShadow(color: Color(0x0F000000), blurRadius: 12, offset: Offset(0, 3)),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 3)),
               ],
             ),
-            child: const Icon(Icons.arrow_back_rounded,
-                size: 20, color: AppColors.textPrimary),
+            child: Icon(Icons.arrow_back_rounded,
+                size: 20, color: colorScheme.onSurface),
           ),
         ),
       ),
@@ -141,7 +142,7 @@ class _FavoritesSliverAppBar extends StatelessWidget {
           'Saved Routes',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
+                color: colorScheme.onSurface,
                 fontSize: 22,
               ),
         ),
@@ -159,6 +160,7 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
@@ -178,15 +180,15 @@ class _SectionTitle extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
+              color: colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               '$count',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: AppColors.primary,
+                color: colorScheme.primary,
               ),
             ),
           ),
@@ -205,6 +207,7 @@ class _FavoriteRouteCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reliability = 92 - (route.id.hashCode.abs() % 10);
+    final colorScheme = Theme.of(context).colorScheme;
     return AppCard(
       onTap: () => _onTrackAgain(context, ref),
       child: Column(
@@ -242,8 +245,8 @@ class _FavoriteRouteCard extends ConsumerWidget {
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        const Icon(Icons.access_time_rounded,
-                            size: 12, color: AppColors.textSecondary),
+                        Icon(Icons.access_time_rounded,
+                            size: 12, color: colorScheme.onSurfaceVariant),
                         const SizedBox(width: 3),
                         Text(
                           '~${route.estimatedTravelMinutes} min',
@@ -270,7 +273,8 @@ class _FavoriteRouteCard extends ConsumerWidget {
               FilledButton.icon(
                 onPressed: () => _onTrackAgain(context, ref),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md,
                     vertical: AppSpacing.xs,
@@ -305,6 +309,7 @@ class _RecentRouteCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
     return AppCard(
       onTap: () => _onTap(context, ref),
       child: Row(
@@ -343,9 +348,9 @@ class _RecentRouteCard extends ConsumerWidget {
               ],
             ),
           ),
-          const Icon(Icons.history_rounded, size: 16, color: AppColors.textSecondary),
+          Icon(Icons.history_rounded, size: 16, color: colorScheme.onSurfaceVariant),
           const SizedBox(width: 4),
-          const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+          Icon(Icons.chevron_right_rounded, color: colorScheme.onSurfaceVariant),
         ],
       ),
     );
@@ -366,6 +371,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
@@ -376,13 +382,13 @@ class _EmptyState extends StatelessWidget {
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                color: AppColors.primaryContainer.withValues(alpha: 0.3),
+                color: colorScheme.primaryContainer.withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.bookmark_outline_rounded,
                 size: 56,
-                color: AppColors.primary,
+                color: colorScheme.primary,
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -397,7 +403,7 @@ class _EmptyState extends StatelessWidget {
               'Tap the bookmark icon on any route card\nto save it for quick access later.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
+                    color: colorScheme.onSurfaceVariant,
                   ),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -406,7 +412,8 @@ class _EmptyState extends StatelessWidget {
               icon: const Icon(Icons.search_rounded, size: 18),
               label: const Text('Browse Routes'),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor: colorScheme.primary,
+                foregroundColor: colorScheme.onPrimary,
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.lg,
                   vertical: AppSpacing.sm,

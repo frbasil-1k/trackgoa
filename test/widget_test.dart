@@ -33,10 +33,10 @@ void main() {
 
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
-    expect(
-      find.text('Settings will be available in a later phase.'),
-      findsOneWidget,
-    );
+    // Phase 6.6 — Settings screen shows section headers
+    expect(find.text('Performance'), findsOneWidget);
+    expect(find.text('Notifications'), findsOneWidget);
+    expect(find.text('About'), findsOneWidget);
 
     await tester.tap(find.text('Home'));
     await tester.pumpAndSettle();

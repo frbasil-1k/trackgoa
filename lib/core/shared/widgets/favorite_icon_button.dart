@@ -64,6 +64,7 @@ class _FavoriteIconButtonState extends ConsumerState<FavoriteIconButton>
   @override
   Widget build(BuildContext context) {
     final isFavorite = ref.watch(isFavoriteProvider(widget.routeId));
+    final colorScheme = Theme.of(context).colorScheme;
 
     return ScaleTransition(
       scale: _scaleAnim,
@@ -79,13 +80,13 @@ class _FavoriteIconButtonState extends ConsumerState<FavoriteIconButton>
             decoration: BoxDecoration(
               color: isFavorite
                   ? const Color(0xFFFFE5B4)
-                  : Colors.white,
+                  : colorScheme.surfaceContainerHighest,
               shape: BoxShape.circle,
-              boxShadow: const [
+              boxShadow: [
                 BoxShadow(
-                  color: Color(0x14000000),
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 12,
-                  offset: Offset(0, 3),
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
@@ -95,7 +96,7 @@ class _FavoriteIconButtonState extends ConsumerState<FavoriteIconButton>
                   : Icons.bookmark_border_rounded,
               color: isFavorite
                   ? const Color(0xFFE65100)
-                  : Colors.grey.shade600,
+                  : colorScheme.onSurfaceVariant,
               size: widget.iconSize,
             ),
           ),

@@ -1,8 +1,10 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/analytics_model.dart';
+import '../models/app_settings_model.dart';
 import '../models/bus_position.dart';
 import '../models/favorites_model.dart';
 import '../sources/bus_data_source.dart';
@@ -13,6 +15,7 @@ import 'analytics_repository.dart';
 import 'bus_repository.dart';
 import 'favorites_repository.dart';
 import 'route_repository.dart';
+import 'settings_repository.dart';
 import '../../features/tracking/services/bus_simulation_engine.dart';
 
 /// Source providers centralize the future mock-to-backend implementation swap.
@@ -165,4 +168,73 @@ final favoritesNotifierProvider =
 /// Convenience: is [routeId] currently a favorite?
 final isFavoriteProvider = Provider.family<bool, String>((ref, routeId) {
   return ref.watch(favoritesNotifierProvider).isFavorite(routeId);
+});
+
+// ─── Phase 6.6 — Settings ─────────────────────────────────────────────────────
+
+/// Settings repository wired to the shared SharedPreferences instance.
+final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
+  return SettingsRepository(ref.watch(sharedPreferencesProvider));
+});
+
+/// In-memory settings state — persisted to SharedPreferences on every mutation.
+class SettingsNotifier extends StateNotifier<AppSettingsState> {
+  SettingsNotifier(this._repo) : super(_repo.load());
+
+  final SettingsRepository _repo;
+
+  Future<void> setLowBandwidth(bool value) async {
+    state = await _repo.setLowBandwidth(state, value);
+  }
+
+  Future<void> setBusArrivalAlerts(bool value) async {
+    state = await _repo.setBusArrivalAlerts(state, value);
+  }
+
+  Future<void> setDelayAlerts(bool value) async {
+    state = await _repo.setDelayAlerts(state, value);
+  }
+
+  Future<void> setPreferredCity(String value) async {
+    state = await _repo.setPreferredCity(state, value);
+  }
+
+  Future<void> setThemeMode(AppThemeMode value) async {
+    state = await _repo.setThemeMode(state, value);
+  }
+
+  Future<void> setDemoSimulation(bool value) async {
+    state = await _repo.setDemoSimulation(state, value);
+  }
+
+  Future<void> resetToDefaults() async {
+    state = await _repo.resetToDefaults();
+  }
+}
+
+/// Global settings state notifier.
+final settingsNotifierProvider =
+    StateNotifierProvider<SettingsNotifier, AppSettingsState>((ref) {
+  final repo = ref.watch(settingsRepositoryProvider);
+  return SettingsNotifier(repo);
+});
+
+/// Convenience: current theme mode.
+final themeModeProvider = Provider<AppThemeMode>((ref) {
+  return ref.watch(settingsNotifierProvider).themeMode;
+});
+
+/// Convenience: current Flutter ThemeMode for MaterialApp.
+final flutterThemeModeProvider = Provider<ThemeMode>((ref) {
+  return ref.watch(themeModeProvider).toFlutterThemeMode();
+});
+
+/// Convenience: is low-bandwidth mode active?
+final lowBandwidthModeProvider = Provider<bool>((ref) {
+  return ref.watch(settingsNotifierProvider).lowBandwidthMode;
+});
+
+/// Convenience: is demo simulation enabled?
+final demoSimulationEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(settingsNotifierProvider).demoSimulationEnabled;
 });

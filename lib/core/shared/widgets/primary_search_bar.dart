@@ -10,19 +10,22 @@ class PrimarySearchBar extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => AppCard(
-    glass: true,
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    onTap: onTap,
-    child: Row(
-      children: [
-        const Icon(Icons.search_rounded),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(hintText, style: Theme.of(context).textTheme.bodyMedium),
-        ),
-        const Icon(Icons.tune_rounded, size: 20),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return AppCard(
+      glass: true,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(Icons.search_rounded, color: colorScheme.onSurfaceVariant),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(hintText, style: Theme.of(context).textTheme.bodyMedium),
+          ),
+          Icon(Icons.tune_rounded, size: 20, color: colorScheme.onSurfaceVariant),
+        ],
+      ),
+    );
+  }
 }

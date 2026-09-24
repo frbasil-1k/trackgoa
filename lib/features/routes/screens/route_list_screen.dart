@@ -40,13 +40,17 @@ class RouteListScreen extends ConsumerWidget {
   }
 }
 
-class _RouteListContent extends StatelessWidget {
+class _RouteListContent extends ConsumerWidget {
   const _RouteListContent({required this.routes});
 
   final List<RouteModel> routes;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final query = ref.watch(
+      routeFilterProvider.select((state) => state.searchQuery.trim().toLowerCase()),
+    );
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
@@ -62,7 +66,7 @@ class _RouteListContent extends StatelessWidget {
         if (routes.isEmpty)
           _EmptyState()
         else
-          ..._buildAnimatedRouteCards(context, routes),
+          ..._buildAnimatedRouteCards(context, routes, query),
       ],
     );
   }
@@ -70,10 +74,21 @@ class _RouteListContent extends StatelessWidget {
   List<Widget> _buildAnimatedRouteCards(
     BuildContext context,
     List<RouteModel> routes,
+    String query,
   ) {
     return routes.asMap().entries.map((entry) {
       final index = entry.key;
       final route = entry.value;
+
+      String? matchingStopName;
+      if (query.isNotEmpty) {
+        for (final stop in route.stops) {
+          if (stop.name.toLowerCase().contains(query)) {
+            matchingStopName = stop.name;
+            break;
+          }
+        }
+      }
 
       return TweenAnimationBuilder<double>(
         duration: Duration(milliseconds: 180 + (40 * index)),
@@ -95,6 +110,7 @@ class _RouteListContent extends StatelessWidget {
               child: RouteCard(
                 route: route,
                 reliabilityPercent: 92 - (index * 3),
+                matchingStopName: matchingStopName,
                 onTap: () => context.push(RoutePaths.trackingFor(route.id)),
               ),
             ),

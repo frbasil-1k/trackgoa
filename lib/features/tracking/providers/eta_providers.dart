@@ -73,8 +73,9 @@ final routeProgressSummaryProvider =
   final routeAsync = ref.watch(selectedRouteProvider(routeId));
 
   return engine.positionsStream.map((allPositions) {
+    final cleanId = routeId.toLowerCase();
     final positions = allPositions
-        .where((p) => p.busId.startsWith('$routeId-'))
+        .where((p) => p.busId.toLowerCase().startsWith('$cleanId-'))
         .toList(growable: false);
 
     final route = routeAsync.value;
@@ -95,6 +96,30 @@ final selectedStopIdProvider = StateProvider.family<String?, String>((ref, route
   // Default to null; the tracking screen sets this when a stop is tapped.
   return null;
 });
+
+/// Provider family tracking whether arrival alerts are active/armed for this route.
+final stopAlertEnabledProvider = StateProvider.family<bool, String>((ref, routeId) {
+  return false;
+});
+
+/// Provides the [StopProgress] for the passenger's target destination stop on [routeId].
+///
+/// If [selectedStopIdProvider] is set, returns that stop's progress.
+/// Otherwise, defaults to the final terminus stop on the route.
+final targetStopProgressProvider = Provider.family<StopProgress?, String>((ref, routeId) {
+  final stopsAsync = ref.watch(liveStopsProvider(routeId));
+  final stops = stopsAsync.value;
+  if (stops == null || stops.isEmpty) return null;
+
+  final selectedId = ref.watch(selectedStopIdProvider(routeId));
+  if (selectedId != null) {
+    for (final sp in stops) {
+      if (sp.stop.id == selectedId) return sp;
+    }
+  }
+  return stops.last;
+});
+
 
 /// Provides accumulated alert events for the selected stop on a route.
 ///

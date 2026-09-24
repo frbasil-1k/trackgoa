@@ -15,10 +15,12 @@ import '../../../data/models/bus_position.dart';
 import '../../../data/models/route_model.dart';
 import '../../../data/repositories/repository_providers.dart';
 import '../providers/map_providers.dart';
+import '../providers/vehicle_providers.dart';
 import '../services/map_tile_service.dart';
 import '../widgets/map_controls.dart';
 import '../widgets/route_bottom_sheet.dart';
 import '../widgets/route_info_card.dart';
+import '../widgets/vehicle_detail_sheet.dart';
 
 class TrackingScreen extends ConsumerStatefulWidget {
   const TrackingScreen({required this.routeId, super.key});
@@ -127,16 +129,19 @@ class _TrackingScreenState extends ConsumerState<TrackingScreen>
                 Positioned(
                   top: MediaQuery.paddingOf(context).top + AppSpacing.sm,
                   left: AppSpacing.md,
-                  child: _GlassBackButton(
-                    onPressed: () => Navigator.of(context).maybePop(),
+                  child: Tooltip(
+                    message: 'Back to routes',
+                    child: _GlassBackButton(
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
                   ),
                 ),
 
-                // 4. Route Info Card
+                // 4. Route Info Card (offset past back button to prevent touch collision)
                 Positioned(
                   top: MediaQuery.paddingOf(context).top + AppSpacing.xs,
-                  left: AppSpacing.lg,
-                  right: AppSpacing.lg,
+                  left: 76,
+                  right: AppSpacing.md,
                   child: RouteInfoCard(route: route),
                 ),
 
@@ -355,6 +360,12 @@ class _FreezeableMapViewState extends ConsumerState<_FreezeableMapView>
 
     // Subscribe to the global engine stream and filter for this route.
     final engine = ref.read(busSimulationEngineProvider);
+    engine.startRoute(widget.route);
+    final initialPositions = engine.getPositionsForRoute(widget.route.id);
+    if (initialPositions.isNotEmpty) {
+      _currentBusPositions.addAll(initialPositions);
+    }
+
     final routeId = widget.route.id;
     _busPositionsSubscription = engine.positionsStream.listen((allPositions) {
       _onBusPositionsReceived(
@@ -377,7 +388,7 @@ class _FreezeableMapViewState extends ConsumerState<_FreezeableMapView>
 
   /// Called whenever the simulation engine emits a new position snapshot.
   void _onBusPositionsReceived(List<BusPosition> positions) {
-    if (positions.isEmpty && _currentBusPositions.isEmpty) return;
+    if (positions.isEmpty) return;
 
     _previousBusPositions
       ..clear()
@@ -460,21 +471,44 @@ class _FreezeableMapViewState extends ConsumerState<_FreezeableMapView>
       return const MarkerLayer(markers: []);
     }
 
+    final selectedVehicleId =
+        ref.watch(selectedVehicleIdProvider(widget.route.id));
+
     final markers = <Marker>[];
     for (int i = 0; i < _currentBusPositions.length; i++) {
       final bus = _currentBusPositions[i];
       final interpolated = _interpolateBus(bus);
+      final isSelected = selectedVehicleId == bus.busId;
 
       markers.add(
         Marker(
           point: interpolated.position,
-          width: 40,
-          height: 40,
+          width: 52,
+          height: 52,
           alignment: Alignment.center,
           child: RepaintBoundary(
             child: _BusMarkerWidget(
+              busId: bus.busId,
               headingDegrees: interpolated.heading,
               routeColor: widget.route.color,
+              isSelected: isSelected,
+              onTap: () {
+                ref
+                    .read(selectedVehicleIdProvider(widget.route.id).notifier)
+                    .state = bus.busId;
+                HapticFeedback.selectionClick();
+                VehicleDetailSheet.show(
+                  context,
+                  busId: bus.busId,
+                  route: widget.route,
+                  onFocusVehicleOnMap: () {
+                    widget.mapController.move(
+                      interpolated.position,
+                      math.max(widget.mapController.camera.zoom, 14.5),
+                    );
+                  },
+                );
+              },
             ),
           ),
         ),
@@ -629,44 +663,89 @@ class _PremiumStopMarker extends StatelessWidget {
   }
 }
 
-/// Animated bus marker that rotates to face the travel direction.
+/// Animated bus marker that rotates to face the travel direction,
+/// highlights when selected, and responds to passenger taps.
 class _BusMarkerWidget extends StatelessWidget {
   const _BusMarkerWidget({
+    required this.busId,
     required this.headingDegrees,
     required this.routeColor,
+    required this.onTap,
+    this.isSelected = false,
   });
 
-  /// Bus heading in degrees (0° = North, clockwise, matching OSRM bearing convention).
+  final String busId;
   final double headingDegrees;
   final Color routeColor;
+  final VoidCallback onTap;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
-    return Transform.rotate(
-      angle: headingDegrees * math.pi / 180,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: routeColor,
-          shape: BoxShape.circle,
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x3D000000),
-              blurRadius: 6,
-              offset: Offset(0, 3),
+    return Tooltip(
+      message: 'Vehicle $busId (Simulated GPS)',
+      child: Semantics(
+        button: true,
+        label: 'Vehicle $busId (Simulated GPS)',
+        child: GestureDetector(
+          key: ValueKey('bus-marker-$busId'),
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+        child: Center(
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (isSelected)
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: routeColor, width: 2.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: routeColor.withValues(alpha: 0.4),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                Transform.rotate(
+                  angle: headingDegrees * math.pi / 180,
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: routeColor,
+                      shape: BoxShape.circle,
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x3D000000),
+                          blurRadius: 6,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.directions_bus_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: const Center(
-          child: Icon(
-            Icons.directions_bus_rounded,
-            color: Colors.white,
-            size: 22,
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 

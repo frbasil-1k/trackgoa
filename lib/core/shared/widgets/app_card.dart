@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 
-/// A softly elevated surface shared by TrackGoa feature screens.
+/// A softly elevated surface shared by SMART-GO feature screens.
 class AppCard extends StatelessWidget {
   const AppCard({
     required this.child,

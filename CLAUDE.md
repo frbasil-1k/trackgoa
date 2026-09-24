@@ -1,101 +1,42 @@
-# CLAUDE.md — TrackGoa Project Operating Manual
+# SMART-GO — Project Operating Manual
 
-You are the implementation engineer for **TrackGoa**, a flagship Flutter application for real-time public bus tracking in Goa.
+You are working on **SMART-GO**, the first deployment of the **SMART** transportation platform.
+SMART-GO is a production-quality Flutter application for real-time bus tracking in Goa, India.
 
-Before every task:
-
-1. Read `TRACKGOA_MASTER_PROMPT.md`.
-2. Preserve the existing architecture.
-3. Implement only the requested phase.
-4. Never modify unrelated files.
+The architecture is **deployment-aware**: all Goa-specific values flow from `SmartDeployment`
+configuration rather than being hard-coded. This enables future deployments (SMART-KA, SMART-MH).
 
 ---
 
-## Current Project State
+## Architecture
 
-Repository: TrackGoa
+```
+DataSource → Repository → Riverpod Provider → UI
+```
 
-Current completed phases:
+Region-specific values come from `SmartDeployment` (see `lib/deployments/smart_go/`).
 
-* ✅ Phase 1 — Foundation
-* ✅ Phase 2 — Data Layer
-* ✅ Phase 3 — Premium Home Experience
-
-Next phase:
-
-* ⏳ Phase 4 — Interactive Routes Experience
-
-Latest stable branch:
-
-* `main`
+Key directories:
+- `lib/core/` — Platform-core models, providers, theme, navigation, shared widgets
+- `lib/data/` — Data layer (models, sources, repositories)
+- `lib/features/` — Feature modules (home, routes, tracking, favorites, analytics, settings)
+- `lib/deployments/` — Deployment-specific configuration (smart_go)
 
 ---
 
-## Protected Architecture
+## Design Direction
 
-Never change these folders without explicit instruction:
-
-* `lib/core/`
-* `lib/data/`
-* `lib/features/`
-
-Current architecture:
-
-`DataSource → Repository → Riverpod Provider → UI`
-
-Never bypass repositories.
+Style: Mobile-first, premium, glassmorphism, soft shadows, rounded corners, smooth animations.
+Inspiration: Google Maps, Uber, Citymapper, Moovit.
+Colors: Deep teal primary, warm amber accent, green/amber/red status.
 
 ---
 
-## UI Direction
+## Code Rules
 
-Design inspiration:
-
-* Google Maps
-* Uber
-* Citymapper
-* Moovit
-
-Style:
-
-* Mobile-first
-* Premium
-* Glassmorphism
-* Soft shadows
-* Rounded corners
-* Smooth 150–250ms animations
-
----
-
-## Performance Rules
-
-Especially important for maps.
-
-* Bus markers should update independently.
-* Don't rebuild entire screens.
-* Use `select()` when appropriate.
-* Prefer reusable widgets.
-
----
-
-## Git Rules
-
-Never:
-
-* commit
-* push
-* rename architecture folders
-* delete project structure
-
-Only modify code requested for the current phase.
-
----
-
-## Before finishing any task
-
-Always:
-
-* Run `flutter analyze`
-* Run `flutter test`
-* Summarize every changed file
-* Explain why each change was made
+- Use `Vehicle` in architecture, "Bus" in UI for SMART-GO
+- All region-specific values must come from `deploymentProvider`
+- Never hard-code city names, region names, or operator names in feature code
+- Use const constructors where appropriate
+- Run `flutter analyze` — zero warnings
+- Run `flutter test` — all tests pass

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/repositories/repository_providers.dart';
@@ -56,6 +57,7 @@ class _FavoriteIconButtonState extends ConsumerState<FavoriteIconButton>
   }
 
   Future<void> _onPressed() async {
+    HapticFeedback.selectionClick();
     _controller.forward(from: 0);
     await ref.read(favoritesNotifierProvider.notifier)
         .toggleFavorite(widget.routeId);
@@ -66,38 +68,41 @@ class _FavoriteIconButtonState extends ConsumerState<FavoriteIconButton>
     final isFavorite = ref.watch(isFavoriteProvider(widget.routeId));
     final colorScheme = Theme.of(context).colorScheme;
 
-    return ScaleTransition(
-      scale: _scaleAnim,
-      child: RotationTransition(
-        turns: _rotateAnim,
-        child: InkWell(
-          onTap: _onPressed,
-          customBorder: const CircleBorder(),
-          child: Container(
-            width: widget.size,
-            height: widget.size,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: isFavorite
-                  ? const Color(0xFFFFE5B4)
-                  : colorScheme.surfaceContainerHighest,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 12,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Icon(
-              isFavorite
-                  ? Icons.bookmark_rounded
-                  : Icons.bookmark_border_rounded,
-              color: isFavorite
-                  ? const Color(0xFFE65100)
-                  : colorScheme.onSurfaceVariant,
-              size: widget.iconSize,
+    return Tooltip(
+      message: isFavorite ? 'Remove from favorites' : 'Save route to favorites',
+      child: ScaleTransition(
+        scale: _scaleAnim,
+        child: RotationTransition(
+          turns: _rotateAnim,
+          child: InkWell(
+            onTap: _onPressed,
+            customBorder: const CircleBorder(),
+            child: Container(
+              width: widget.size,
+              height: widget.size,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isFavorite
+                    ? const Color(0xFFFFE5B4)
+                    : colorScheme.surfaceContainerHighest,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Icon(
+                isFavorite
+                    ? Icons.bookmark_rounded
+                    : Icons.bookmark_border_rounded,
+                color: isFavorite
+                    ? const Color(0xFFE65100)
+                    : colorScheme.onSurfaceVariant,
+                size: widget.iconSize,
+              ),
             ),
           ),
         ),

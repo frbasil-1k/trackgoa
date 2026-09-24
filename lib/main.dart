@@ -16,7 +16,7 @@ void main() async {
         // Settings repositories. Swap this for a real persistence layer later.
         sharedPreferencesProvider.overrideWithValue(prefs),
       ],
-      child: const TrackGoaApp(),
+      child: const SmartGoApp(),
     ),
   );
 }

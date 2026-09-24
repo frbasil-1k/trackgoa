@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:trackgoa/core/utils/polyline_simplifier.dart';
-import 'package:trackgoa/data/mock/mock_routes.dart';
-import 'package:trackgoa/features/tracking/services/polyline_navigation_service.dart';
+import 'package:smart_go/core/utils/polyline_simplifier.dart';
+import 'package:smart_go/data/mock/mock_routes.dart';
+import 'package:smart_go/features/tracking/services/polyline_navigation_service.dart';
 
 void main() {
   group('OSRM Real Road Geometry Foundation', () {

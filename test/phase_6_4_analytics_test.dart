@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:trackgoa/data/repositories/analytics_repository.dart';
+import 'package:smart_go/data/repositories/analytics_repository.dart';
 
 void main() {
   group('Phase 6.4 — Analytics Repository', () {

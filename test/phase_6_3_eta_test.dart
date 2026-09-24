@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:trackgoa/data/models/bus_position.dart';
-import 'package:trackgoa/data/models/route_model.dart';
-import 'package:trackgoa/data/models/stop_model.dart';
-import 'package:trackgoa/features/tracking/services/eta_calculation_service.dart';
+import 'package:smart_go/data/models/bus_position.dart';
+import 'package:smart_go/data/models/route_model.dart';
+import 'package:smart_go/data/models/stop_model.dart';
+import 'package:smart_go/features/tracking/services/eta_calculation_service.dart';
 
 void main() {
   // Synthetic 3-stop route for deterministic testing.

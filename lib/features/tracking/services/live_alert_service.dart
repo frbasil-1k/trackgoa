@@ -60,17 +60,7 @@ class LiveAlertService {
         createdAt: DateTime.now(),
         message: '🎉 Arrived at ${sp.stop.name}!',
       ));
-    } else if (previousStopsAway == 2 && stopsAway < 2) {
-      alert = _fireIfNew('twoStopsAway-$stopId', () => AlertModel(
-        id: 'alert-${DateTime.now().millisecondsSinceEpoch}',
-        busId: routeId,
-        routeId: routeId,
-        stopId: stopId,
-        type: AlertType.twoStopsAway,
-        createdAt: DateTime.now(),
-        message: '${sp.stop.name} is 2 stops away',
-      ));
-    } else if (previousStopsAway == 1 && stopsAway < 1) {
+    } else if (stopsAway == 1) {
       alert = _fireIfNew('oneStopAway-$stopId', () => AlertModel(
         id: 'alert-${DateTime.now().millisecondsSinceEpoch}',
         busId: routeId,
@@ -78,7 +68,17 @@ class LiveAlertService {
         stopId: stopId,
         type: AlertType.oneStopAway,
         createdAt: DateTime.now(),
-        message: '🚏 ${sp.stop.name} is 1 stop away!',
+        message: '🚏 ${sp.stop.name} is 1 stop away! Prepare to alight.',
+      ));
+    } else if (stopsAway == 2) {
+      alert = _fireIfNew('twoStopsAway-$stopId', () => AlertModel(
+        id: 'alert-${DateTime.now().millisecondsSinceEpoch}',
+        busId: routeId,
+        routeId: routeId,
+        stopId: stopId,
+        type: AlertType.twoStopsAway,
+        createdAt: DateTime.now(),
+        message: '🔔 ${sp.stop.name} is 2 stops away.',
       ));
     }
 

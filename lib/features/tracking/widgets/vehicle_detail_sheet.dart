@@ -216,10 +216,14 @@ class VehicleDetailSheet extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0FDF4),
+              color: colorScheme.brightness == Brightness.dark
+                  ? const Color(0xFF0F291E)
+                  : const Color(0xFFF0FDF4),
               borderRadius: BorderRadius.circular(AppSpacing.controlRadius),
               border: Border.all(
-                color: const Color(0xFF86EFAC),
+                color: colorScheme.brightness == Brightness.dark
+                    ? const Color(0xFF1E5E3A)
+                    : const Color(0xFF86EFAC),
                 width: 1,
               ),
             ),
@@ -235,19 +239,23 @@ class VehicleDetailSheet extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Simulated Live Telemetry • Demo Mode',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF15803D),
+                          color: colorScheme.brightness == Brightness.dark
+                              ? const Color(0xFF86EFAC)
+                              : const Color(0xFF15803D),
                         ),
                       ),
                       Text(
                         'GPS motion is calibrated to Goa transit schedules. Hardware AVL telemetry connects in live fleet.',
                         style: TextStyle(
                           fontSize: 11,
-                          color: const Color(0xFF166534).withValues(alpha: 0.9),
+                          color: colorScheme.brightness == Brightness.dark
+                              ? const Color(0xFFA7F3D0)
+                              : const Color(0xFF166534).withValues(alpha: 0.9),
                         ),
                       ),
                     ],

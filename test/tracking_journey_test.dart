@@ -108,7 +108,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       // 7. Test Analytics navigation
-      await tester.drag(find.byKey(const ValueKey('tracking-bottom-sheet-list')), const Offset(0, 600));
+      await tester.drag(find.byKey(const ValueKey('tracking-bottom-sheet-list')), const Offset(0, 500));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Analytics'), findsOneWidget);

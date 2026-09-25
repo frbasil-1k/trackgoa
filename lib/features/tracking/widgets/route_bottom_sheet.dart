@@ -11,8 +11,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/alert_model.dart';
 import '../../../data/models/bus_model.dart';
+import '../../../data/models/bus_position.dart';
 import '../../../data/models/route_model.dart';
 import '../../../data/models/stop_model.dart';
+import '../../../data/repositories/repository_providers.dart';
 import '../providers/eta_providers.dart';
 import '../providers/vehicle_providers.dart';
 import '../services/eta_calculation_service.dart';
@@ -80,7 +82,10 @@ class _RouteBottomSheetState extends ConsumerState<RouteBottomSheet>
     if (!mounted) return;
     final messenger = ScaffoldMessenger.maybeOf(context);
     if (messenger == null) return;
-    HapticFeedback.mediumImpact();
+    final settings = ref.read(settingsNotifierProvider);
+    if (settings.vibrationEnabled) {
+      HapticFeedback.mediumImpact();
+    }
     messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
@@ -200,7 +205,7 @@ class _RouteBottomSheetState extends ConsumerState<RouteBottomSheet>
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.sizeOf(context).height;
-    final minHeight = (screenHeight * 0.33).clamp(260.0, 310.0);
+    final minHeight = (screenHeight * 0.38).clamp(280.0, 370.0);
     final maxHeight = screenHeight * 0.85;
     final dragRange = maxHeight - minHeight;
 
@@ -213,7 +218,8 @@ class _RouteBottomSheetState extends ConsumerState<RouteBottomSheet>
         final stops = next.value;
         if (stops == null || stops.isEmpty) return;
         final alertsEnabled = ref.read(stopAlertEnabledProvider(widget.route.id));
-        if (!alertsEnabled) return;
+        final globalArrivalAlerts = ref.read(settingsNotifierProvider).busArrivalAlerts;
+        if (!alertsEnabled || !globalArrivalAlerts) return;
 
         final selectedStopId = ref.read(selectedStopIdProvider(widget.route.id)) ??
             (widget.route.stops.isNotEmpty ? widget.route.stops.last.id : null);
@@ -225,7 +231,37 @@ class _RouteBottomSheetState extends ConsumerState<RouteBottomSheet>
       },
     );
 
+    // Reset alert tracking and notify passenger when active vehicle switches
+    ref.listen<String>(
+      activeVehicleIdProvider(widget.route.id),
+      (prev, next) {
+        if (prev != null && prev.toLowerCase() != next.toLowerCase()) {
+          _alertService.reset();
+          final alertsEnabled =
+              ref.read(stopAlertEnabledProvider(widget.route.id));
+          if (alertsEnabled) {
+            final fleet = ref.read(routeVehiclesProvider(widget.route.id));
+            final matched = fleet.firstWhere(
+              (b) => b.id.toLowerCase() == next.toLowerCase(),
+              orElse: () =>
+                  BusModel(id: next, routeId: widget.route.id, label: next),
+            );
+            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Alerts are now following ${matched.registrationNumber ?? matched.label}',
+                ),
+                duration: const Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+      },
+    );
+
     final isExpanded = _dragPosition > 0.4 || _dragController.value > 0.4;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Positioned(
       left: 0,
@@ -243,12 +279,12 @@ class _RouteBottomSheetState extends ConsumerState<RouteBottomSheet>
 
             return Container(
               height: _dragController.isAnimating ? animatedHeight : currentHeight,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(AppSpacing.sheetRadius),
                 ),
-                boxShadow: [
+                boxShadow: const [
                   BoxShadow(
                     color: Color(0x1A000000),
                     blurRadius: 16,
@@ -266,7 +302,10 @@ class _RouteBottomSheetState extends ConsumerState<RouteBottomSheet>
             onSelectStop: (stopId) {
               ref.read(selectedStopIdProvider(widget.route.id).notifier).state = stopId;
               _alertService.resetForStop(stopId);
-              HapticFeedback.selectionClick();
+              final settings = ref.read(settingsNotifierProvider);
+              if (settings.vibrationEnabled) {
+                HapticFeedback.selectionClick();
+              }
               final stop = widget.route.stops.firstWhere(
                 (s) => s.id == stopId,
                 orElse: () => widget.route.stops.last,
@@ -513,9 +552,7 @@ class _LiveEtaCard extends ConsumerWidget {
     final targetProgress = ref.watch(targetStopProgressProvider(route.id));
     final selectedStopId = ref.watch(selectedStopIdProvider(route.id));
 
-    final vehicleId = summary?.busPosition.busId ??
-        ref.watch(selectedVehicleIdProvider(route.id)) ??
-        '${route.id}-bus-1';
+    final vehicleId = ref.watch(activeVehicleIdProvider(route.id));
     final intel = ref.watch(vehicleIntelligenceProvider(vehicleId));
 
     final targetStop = targetProgress?.stop ??
@@ -824,8 +861,286 @@ class _LiveEtaCard extends ConsumerWidget {
               ),
             ),
           ],
+          // Multi-Vehicle Selector if more than 1 vehicle operates on this route
+          _MultiVehicleSelector(route: route),
         ],
       ),
+    );
+  }
+}
+
+/// Multi-vehicle switcher showing all operating buses on this route.
+/// Displays vehicle registration, current location, destination ETA, and crowding.
+/// 1-tap switching updates the global tracking context.
+class _MultiVehicleSelector extends ConsumerWidget {
+  const _MultiVehicleSelector({required this.route});
+
+  final RouteModel route;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vehicles = ref.watch(routeVehiclesProvider(route.id));
+    if (vehicles.length <= 1) return const SizedBox.shrink();
+
+    final activeVehicleId = ref.watch(activeVehicleIdProvider(route.id));
+    final engine = ref.watch(busSimulationEngineProvider);
+    final etaService = ref.watch(etaCalculationServiceProvider);
+    final selectedStopId = ref.watch(selectedStopIdProvider(route.id));
+    final positions = engine.getPositionsForRoute(route.id);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: AppSpacing.sm),
+        Divider(
+          height: 1,
+          thickness: 1,
+          color: AppColors.inactive.withValues(alpha: 0.15),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Icon(
+              Icons.alt_route_rounded,
+              size: 14,
+              color: route.color,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '${vehicles.length} BUSES ON THIS ROUTE',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+                color: route.color,
+              ),
+            ),
+            const Spacer(),
+            const Text(
+              '1-tap to switch',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: vehicles.map((vehicle) {
+            final isSelected =
+                vehicle.id.toLowerCase() == activeVehicleId.toLowerCase();
+
+            // Find this vehicle's simulated position
+            BusPosition? busPos;
+            for (final p in positions) {
+              if (p.busId.toLowerCase() == vehicle.id.toLowerCase()) {
+                busPos = p;
+                break;
+              }
+            }
+
+            String locationLabel = 'En route';
+            String etaLabel = '—';
+            if (busPos != null && route.stops.isNotEmpty) {
+              final stopsProg = etaService.computeStopsProgress(
+                route: route,
+                busPosition: busPos,
+              );
+              final nearestStop = route.stops.firstWhere(
+                (s) => s.id == busPos!.nearestStopId,
+                orElse: () => route.stops.first,
+              );
+              locationLabel = 'At ${nearestStop.name}';
+
+              final targetId = selectedStopId ?? route.stops.last.id;
+              for (final sp in stopsProg) {
+                if (sp.stop.id == targetId) {
+                  if (sp.state == StopProgressState.passed) {
+                    etaLabel = 'Passed stop';
+                  } else if (sp.state == StopProgressState.current) {
+                    etaLabel = 'Arrived';
+                  } else {
+                    etaLabel = '${sp.etaLabel} to stop';
+                  }
+                  break;
+                }
+              }
+            }
+
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: Tooltip(
+                  message: isSelected
+                      ? 'Currently following ${vehicle.registrationNumber ?? vehicle.label}'
+                      : 'Switch tracking to ${vehicle.registrationNumber ?? vehicle.label}',
+                  child: Semantics(
+                    button: true,
+                    label: isSelected
+                        ? 'Active tracking ${vehicle.registrationNumber ?? vehicle.label}'
+                        : 'Switch to ${vehicle.registrationNumber ?? vehicle.label}',
+                    child: InkWell(
+                      key: ValueKey('vehicle-selector-${vehicle.id}'),
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () {
+                        if (!isSelected) {
+                          ref
+                              .read(selectedVehicleIdProvider(route.id).notifier)
+                              .state = vehicle.id;
+                          final settings = ref.read(settingsNotifierProvider);
+                          if (settings.vibrationEnabled) {
+                            HapticFeedback.selectionClick();
+                          }
+                          final messenger = ScaffoldMessenger.maybeOf(context);
+                          if (messenger != null) {
+                            messenger.clearSnackBars();
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    const Icon(Icons.directions_bus_rounded,
+                                        color: Colors.white, size: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Tracking switched to ${vehicle.registrationNumber ?? vehicle.label}',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                duration: const Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? route.color.withValues(alpha: 0.10)
+                              : Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSelected
+                                ? route.color
+                                : AppColors.inactive.withValues(alpha: 0.25),
+                            width: isSelected ? 1.8 : 1.0,
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: route.color.withValues(alpha: 0.15),
+                                    blurRadius: 5,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.directions_bus_rounded,
+                                  size: 13,
+                                  color: isSelected
+                                      ? route.color
+                                      : AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    vehicle.registrationNumber ?? vehicle.label,
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: isSelected
+                                          ? route.color
+                                          : AppColors.textPrimary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (isSelected)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 4, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: route.color,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'TRACKING',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 7.5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              locationLabel,
+                              style: const TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  etaLabel,
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : AppColors.textSecondary,
+                                  ),
+                                ),
+                                Text(
+                                  vehicle.crowding.shortLabel,
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: vehicle.crowding ==
+                                            VehicleCrowding.standingRoomOnly
+                                        ? AppColors.warning
+                                        : AppColors.success,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }
@@ -1019,7 +1334,7 @@ class _ActionButtonsRow extends ConsumerWidget {
   }
 }
 
-class _StopsTimelineList extends ConsumerWidget {
+class _StopsTimelineList extends ConsumerStatefulWidget {
   const _StopsTimelineList({
     required this.routeId,
     required this.stops,
@@ -1033,12 +1348,19 @@ class _StopsTimelineList extends ConsumerWidget {
   final ValueChanged<String> onSelectStop;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final stopsAsync = ref.watch(liveStopsProvider(routeId));
+  ConsumerState<_StopsTimelineList> createState() => _StopsTimelineListState();
+}
+
+class _StopsTimelineListState extends ConsumerState<_StopsTimelineList> {
+  bool _showPassedStops = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final stopsAsync = ref.watch(liveStopsProvider(widget.routeId));
     final liveStops = stopsAsync.value;
-    final selectedStopId = ref.watch(selectedStopIdProvider(routeId));
+    final selectedStopId = ref.watch(selectedStopIdProvider(widget.routeId));
     final activeTargetId =
-        selectedStopId ?? (stops.isNotEmpty ? stops.last.id : null);
+        selectedStopId ?? (widget.stops.isNotEmpty ? widget.stops.last.id : null);
 
     // Build a lookup: stopId -> StopProgress for the live state.
     final progressById = <String, StopProgress>{};
@@ -1048,27 +1370,259 @@ class _StopsTimelineList extends ConsumerWidget {
       }
     }
 
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: stops.length,
-      itemBuilder: (context, index) {
-        final stop = stops[index];
-        final isFirst = index == 0;
-        final isLast = index == stops.length - 1;
-        final progress = progressById[stop.id];
-        final isSelected = stop.id == activeTargetId;
+    // Partition stops into passed, current, and upcoming
+    final passedStops = <StopModel>[];
+    StopModel? currentStop;
+    StopProgress? currentProgress;
+    final upcomingStops = <StopModel>[];
 
-        return _StopTimelineItem(
-          stop: stop,
-          isFirst: isFirst,
-          isLast: isLast,
-          isSelected: isSelected,
-          routeColor: routeColor,
-          progress: progress,
-          onTap: () => onSelectStop(stop.id),
-        );
-      },
+    for (final stop in widget.stops) {
+      final sp = progressById[stop.id];
+      if (sp == null) {
+        upcomingStops.add(stop);
+      } else if (sp.state == StopProgressState.passed) {
+        passedStops.add(stop);
+      } else if (sp.state == StopProgressState.current) {
+        currentStop = stop;
+        currentProgress = sp;
+      } else {
+        upcomingStops.add(stop);
+      }
+    }
+
+    // Check if the passenger's destination has already been passed by the active vehicle
+    bool isTargetPassed = false;
+    StopModel? targetStop;
+    if (activeTargetId != null) {
+      for (final s in passedStops) {
+        if (s.id == activeTargetId) {
+          isTargetPassed = true;
+          targetStop = s;
+          break;
+        }
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Destination Mismatch Warning if vehicle has already passed selected stop
+        if (isTargetPassed && targetStop != null)
+          Container(
+            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppSpacing.controlRadius),
+              border: Border.all(
+                color: AppColors.warning.withValues(alpha: 0.5),
+                width: 1.2,
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: AppColors.warning,
+                  size: 20,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    'This bus has already passed your destination (${targetStop.name}). Tap an upcoming stop below to update your destination, or switch to a bus behind it.',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // 2. Collapsible Passed Stops Section
+        if (passedStops.isNotEmpty) ...[
+          InkWell(
+            key: const ValueKey('passed-stops-toggle-button'),
+            onTap: () => setState(() => _showPassedStops = !_showPassedStops),
+            borderRadius: BorderRadius.circular(AppSpacing.controlRadius),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(AppSpacing.controlRadius),
+                border: Border.all(
+                  color: AppColors.inactive.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.check_circle_outline_rounded,
+                    size: 15,
+                    color: AppColors.inactive,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${passedStops.length} earlier stops passed',
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    _showPassedStops ? 'Hide' : 'Show',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: widget.routeColor,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  Icon(
+                    _showPassedStops
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    size: 16,
+                    color: widget.routeColor,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_showPassedStops)
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: passedStops.length,
+              itemBuilder: (context, index) {
+                final stop = passedStops[index];
+                final progress = progressById[stop.id];
+                final isSelected = stop.id == activeTargetId;
+
+                return _StopTimelineItem(
+                  stop: stop,
+                  isFirst: index == 0 && passedStops.first.id == widget.stops.first.id,
+                  isLast: false,
+                  isSelected: isSelected,
+                  routeColor: widget.routeColor,
+                  progress: progress,
+                  onTap: () => widget.onSelectStop(stop.id),
+                );
+              },
+            ),
+        ],
+
+        // 3. Current Stop Section ("BUS IS HERE")
+        if (currentStop != null) ...[
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: widget.routeColor.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: widget.routeColor.withValues(alpha: 0.45),
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: widget.routeColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.directions_bus_rounded,
+                        color: Colors.white, size: 14),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: AppColors.success,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'BUS IS HERE',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            currentProgress?.etaLabel ?? 'At platform',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.success,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        currentStop.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+        ],
+
+        // 4. Upcoming Stops Section
+        if (upcomingStops.isNotEmpty)
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: upcomingStops.length,
+            itemBuilder: (context, index) {
+              final stop = upcomingStops[index];
+              final isFirst = index == 0 && currentStop == null && passedStops.isEmpty;
+              final isLast = index == upcomingStops.length - 1;
+              final progress = progressById[stop.id];
+              final isSelected = stop.id == activeTargetId;
+
+              return _StopTimelineItem(
+                stop: stop,
+                isFirst: isFirst,
+                isLast: isLast,
+                isSelected: isSelected,
+                routeColor: widget.routeColor,
+                progress: progress,
+                onTap: () => widget.onSelectStop(stop.id),
+              );
+            },
+          ),
+      ],
     );
   }
 }

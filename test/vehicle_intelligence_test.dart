@@ -45,8 +45,8 @@ void main() {
 
       // 2. Verify passenger vehicle intelligence in LiveEtaCard
       // Verified KTCL registration GA-08-V-4965, DEMO badge, and vehicle type should be displayed
-      expect(find.text('GA-08-V-4965'), findsOneWidget);
-      expect(find.text('DEMO'), findsOneWidget);
+      expect(find.text('GA-08-V-4965'), findsAtLeastNWidgets(1));
+      expect(find.text('DEMO'), findsAtLeastNWidgets(1));
       expect(find.text('Electric AC City Shuttle'), findsOneWidget);
 
       // 3. Tap the vehicle avatar button to open VehicleDetailSheet

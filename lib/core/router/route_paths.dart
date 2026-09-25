@@ -3,7 +3,8 @@ abstract final class RoutePaths {
       home = '/home',
       routes = '/routes',
       favorites = '/favorites',
-      settings = '/settings';
+      settings = '/settings',
+      journeyPlanner = '/journey-planner';
   static const tracking = '/tracking/:routeId',
       analytics = '/analytics/:routeId';
   static String trackingFor(String routeId) => '/tracking/$routeId';

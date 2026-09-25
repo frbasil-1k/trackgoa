@@ -8,6 +8,11 @@ import 'package:smart_go/data/repositories/repository_providers.dart';
 void main() {
   testWidgets('shell navigation switches destinations', (tester) async {
     // Phase 6.5 — Mock SharedPreferences for widget tests.
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
 

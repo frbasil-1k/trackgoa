@@ -69,6 +69,23 @@ class PassengerVehicleIntelligence {
 final selectedVehicleIdProvider =
     StateProvider.family<String?, String>((ref, routeId) => null);
 
+/// Authoritative single source of truth for the currently tracked vehicle on [routeId].
+///
+/// If no vehicle has been explicitly selected by the passenger, defaults to the
+/// first available vehicle assigned to that route.
+final activeVehicleIdProvider =
+    Provider.family<String, String>((ref, routeId) {
+  final explicitId = ref.watch(selectedVehicleIdProvider(routeId));
+  if (explicitId != null && explicitId.isNotEmpty) {
+    return explicitId;
+  }
+  final vehicles = ref.watch(routeVehiclesProvider(routeId));
+  if (vehicles.isNotEmpty) {
+    return vehicles.first.id;
+  }
+  return '$routeId-bus-1';
+});
+
 /// Provides the active fleet of vehicles assigned to a route.
 ///
 /// Uses verified KTCL electric bus fleet records (Olectra K9, GA-08-V series).

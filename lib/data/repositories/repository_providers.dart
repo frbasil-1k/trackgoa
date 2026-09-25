@@ -213,6 +213,14 @@ class SettingsNotifier extends StateNotifier<AppSettingsState> {
     state = await _repo.setDemoSimulation(state, value);
   }
 
+  Future<void> setVibration(bool value) async {
+    state = await _repo.setVibration(state, value);
+  }
+
+  Future<void> setDistanceUnit(DistanceUnit value) async {
+    state = await _repo.setDistanceUnit(state, value);
+  }
+
   Future<void> resetToDefaults() async {
     state = await _repo.resetToDefaults();
   }

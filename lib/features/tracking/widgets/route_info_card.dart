@@ -25,7 +25,7 @@ class RouteInfoCard extends StatelessWidget {
       child: Container(
         constraints: const BoxConstraints(maxWidth: 420),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.94),
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.94),
           borderRadius: BorderRadius.circular(AppSpacing.controlRadius),
           boxShadow: const [
             // Single shadow for better performance

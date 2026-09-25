@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../data/models/alert_model.dart';
+import '../../../data/models/bus_position.dart';
 import '../../../data/models/stop_model.dart';
 import '../../../data/repositories/repository_providers.dart';
 import 'map_providers.dart';
+import 'vehicle_providers.dart';
 import '../services/eta_calculation_service.dart';
 
 /// Singleton instance of the pure ETA calculation service.
@@ -16,10 +18,11 @@ final etaCalculationServiceProvider = Provider<EtaCalculationService>(
 );
 
 /// Provides a [Stream] of [StopProgress] for every stop on a route,
-/// updated every simulation tick (500 ms).
+/// updated every simulation tick (500 ms) for the currently selected vehicle.
 ///
-/// Uses [selectedStopId] to determine which stop the user is tracking
-/// for alert purposes.
+/// If multiple vehicles are active on the route, all calculations (next stop,
+/// distance, ETA, and passed/current/upcoming states) dynamically adapt to the
+/// active vehicle selected via [activeVehicleIdProvider].
 ///
 /// Emits an empty list if the route has not been warmed up yet.
 final liveStopsProvider =
@@ -27,19 +30,28 @@ final liveStopsProvider =
   final engine = ref.watch(busSimulationEngineProvider);
   final etaService = ref.watch(etaCalculationServiceProvider);
   final routeAsync = ref.watch(selectedRouteProvider(routeId));
+  final activeVehicleId = ref.watch(activeVehicleIdProvider(routeId));
 
   // Get the route's stops for looking up stop data.
   final route = routeAsync.value;
 
   return engine.positionsStream.map((allPositions) {
+    final cleanId = routeId.toLowerCase();
     final positions = allPositions
-        .where((p) => p.busId.startsWith('$routeId-'))
+        .where((p) => p.busId.toLowerCase().startsWith('$cleanId-'))
         .toList(growable: false);
 
     if (route == null || route.stops.isEmpty) return const <StopProgress>[];
 
-    // Use the first bus on this route for all stop progress calculations.
-    final busPosition = positions.isNotEmpty ? positions.first : null;
+    // Authoritative vehicle position for the tracked vehicle
+    BusPosition? busPosition;
+    for (final p in positions) {
+      if (p.busId.toLowerCase() == activeVehicleId.toLowerCase()) {
+        busPosition = p;
+        break;
+      }
+    }
+    busPosition ??= (positions.isNotEmpty ? positions.first : null);
 
     final progress = etaService.computeStopsProgress(
       route: route,
@@ -65,12 +77,13 @@ final nextStopProvider =
 ///
 /// This is the main provider the bottom sheet consumes. Updated every
 /// simulation tick so the ETA, next stop, speed, and stops remaining
-/// are always current.
+/// correspond to the currently active vehicle.
 final routeProgressSummaryProvider =
     StreamProvider.family<RouteProgressSummary?, String>((ref, routeId) {
   final engine = ref.watch(busSimulationEngineProvider);
   final etaService = ref.watch(etaCalculationServiceProvider);
   final routeAsync = ref.watch(selectedRouteProvider(routeId));
+  final activeVehicleId = ref.watch(activeVehicleIdProvider(routeId));
 
   return engine.positionsStream.map((allPositions) {
     final cleanId = routeId.toLowerCase();
@@ -81,7 +94,15 @@ final routeProgressSummaryProvider =
     final route = routeAsync.value;
     if (route == null || route.stops.isEmpty) return null;
 
-    final busPosition = positions.isNotEmpty ? positions.first : null;
+    BusPosition? busPosition;
+    for (final p in positions) {
+      if (p.busId.toLowerCase() == activeVehicleId.toLowerCase()) {
+        busPosition = p;
+        break;
+      }
+    }
+    busPosition ??= (positions.isNotEmpty ? positions.first : null);
+
     return etaService.computeRouteProgressSummary(
       route: route,
       busPosition: busPosition,

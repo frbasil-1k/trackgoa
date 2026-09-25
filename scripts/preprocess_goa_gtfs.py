@@ -49,6 +49,8 @@ stop_times_rows = load_csv("stop_times.txt")
 
 print(f"Loaded {len(routes_rows)} routes, {len(stops_rows)} stops, {len(trips_rows)} trips, {len(stop_times_rows)} stop times.")
 
+import math
+
 # Group stop_times by trip_id
 stop_times_by_trip = {}
 for st in stop_times_rows:
@@ -60,48 +62,57 @@ for st in stop_times_rows:
 for tid in stop_times_by_trip:
     stop_times_by_trip[tid].sort(key=lambda x: int(x['stop_sequence']))
 
+def haversine(p1, p2):
+    lat1, lon1 = math.radians(p1[0]), math.radians(p1[1])
+    lat2, lon2 = math.radians(p2[0]), math.radians(p2[1])
+    dlat, dlon = lat2 - lat1, lon2 - lon1
+    a = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
+    return 6371000 * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
 # Helper to fetch OSRM road geometry
 def get_osrm_geometry(points):
     """
     points: list of (lat, lon)
-    Returns list of [lat, lon] following real road network.
+    Returns list of [lat, lon] following real road network leg-by-leg
+    with radius snapping and detour validation to prevent divided-road U-turns.
     """
     if len(points) < 2:
         return [[p[0], p[1]] for p in points]
     
-    chunk_size = 20
     full_poly = []
-    
-    for i in range(0, len(points) - 1, chunk_size - 1):
-        chunk = points[i : i + chunk_size]
-        if len(chunk) < 2:
-            continue
+    for i in range(len(points) - 1):
+        s1 = points[i]
+        s2 = points[i+1]
+        st_dist = haversine(s1, s2)
         
-        coord_str = ";".join(f"{p[1]:.6f},{p[0]:.6f}" for p in chunk)
-        url = f"http://router.project-osrm.org/route/v1/driving/{coord_str}?overview=full&geometries=geojson"
-        req = urllib.request.Request(url, headers={'User-Agent': 'SmartGoGtfsPreprocessor/2.0'})
-        
-        chunk_pts = None
-        for attempt in range(3):
+        if st_dist < 25:
+            pts = [[s1[0], s1[1]], [s2[0], s2[1]]]
+        else:
+            url = f"http://router.project-osrm.org/route/v1/driving/{s1[1]:.6f},{s1[0]:.6f};{s2[1]:.6f},{s2[0]:.6f}?overview=full&geometries=geojson&radiuses=150;150"
+            req = urllib.request.Request(url, headers={'User-Agent': 'SmartGoGtfsPreprocessor/2.0'})
+            pts = None
+            r_dist = st_dist
             try:
-                with urllib.request.urlopen(req, timeout=14) as resp:
+                with urllib.request.urlopen(req, timeout=5) as resp:
                     data = json.loads(resp.read().decode('utf-8'))
                     if data.get('routes'):
-                        chunk_pts = [[c[1], c[0]] for c in data['routes'][0]['geometry']['coordinates']]
-                        break
-            except Exception as e:
-                time.sleep(0.5)
-        
-        if not chunk_pts:
-            print(f"  [OSRM fallback] using straight segments for chunk {i}")
-            chunk_pts = [[p[0], p[1]] for p in chunk]
-            
+                        r = data['routes'][0]
+                        pts = [[c[1], c[0]] for c in r['geometry']['coordinates']]
+                        r_dist = r['distance']
+            except Exception:
+                pass
+                
+            ratio = r_dist / max(st_dist, 1.0)
+            if pts is None or (ratio > 2.2 and r_dist > 500):
+                # Detour or unreachable divided median detected: interpolate along direct corridor
+                num_steps = max(2, int(st_dist / 40))
+                pts = [[s1[0] + (s2[0] - s1[0]) * (step / num_steps), s1[1] + (s2[1] - s1[1]) * (step / num_steps)] for step in range(num_steps + 1)]
+                
         if not full_poly:
-            full_poly.extend(chunk_pts)
+            full_poly.extend(pts)
         else:
-            full_poly.extend(chunk_pts[1:])
-            
-        time.sleep(0.3)
+            full_poly.extend(pts[1:])
+        time.sleep(0.05)
         
     return full_poly
 

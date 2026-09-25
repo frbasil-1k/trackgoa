@@ -15,6 +15,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/route_model.dart';
 import '../../../data/repositories/repository_providers.dart';
+import '../../journey_planner/providers/journey_planner_providers.dart';
 import '../providers/home_providers.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -30,7 +31,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _searchActive = false;
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
-  bool _lowBandwidth = false;
 
   @override
   void dispose() {
@@ -113,14 +113,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     searchActive: _searchActive,
                     searchController: _searchController,
                     focusNode: _focusNode,
-                    lowBandwidth: _lowBandwidth,
                     allRoutes: allRoutes,
                     filteredRoutes: filteredRoutes,
                     onCitySelected: (city) => setState(() => _selectedCity = city),
                     onSearchChanged: (query) => setState(() => _searchQuery = query),
                     onActivateSearch: _activateSearch,
                     onClearSearch: _clearSearch,
-                    onBandwidthChanged: (value) => setState(() => _lowBandwidth = value),
                     onResetFilters: () {
                       setState(() {
                         _selectedCity = 'All';
@@ -158,14 +156,12 @@ class _HomeContent extends StatelessWidget {
     required this.searchActive,
     required this.searchController,
     required this.focusNode,
-    required this.lowBandwidth,
     required this.allRoutes,
     required this.filteredRoutes,
     required this.onCitySelected,
     required this.onSearchChanged,
     required this.onActivateSearch,
     required this.onClearSearch,
-    required this.onBandwidthChanged,
     required this.onResetFilters,
   });
 
@@ -175,14 +171,12 @@ class _HomeContent extends StatelessWidget {
   final bool searchActive;
   final TextEditingController searchController;
   final FocusNode focusNode;
-  final bool lowBandwidth;
   final List<RouteModel> allRoutes;
   final List<RouteModel> filteredRoutes;
   final ValueChanged<String> onCitySelected;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onActivateSearch;
   final VoidCallback onClearSearch;
-  final ValueChanged<bool> onBandwidthChanged;
   final VoidCallback onResetFilters;
 
   String? _findMatchingStop(RouteModel route) {
@@ -210,6 +204,10 @@ class _HomeContent extends StatelessWidget {
       ),
       children: [
         const _HomeHeader(),
+        const SizedBox(height: AppSpacing.lg),
+
+        // ── Passenger Journey Planner Prompt Card ───────────────────────────
+        const _HomeJourneyPlannerPromptCard(),
         const SizedBox(height: AppSpacing.lg),
 
         // ── Interactive Search ──────────────────────────────────────────────
@@ -328,10 +326,7 @@ class _HomeContent extends StatelessWidget {
         const SizedBox(height: AppSpacing.xs),
         _FavoritesPreview(routes: allRoutes),
 
-        const SizedBox(height: AppSpacing.sm),
-
-        // ── Bandwidth Mode ──────────────────────────────────────────────────
-        _BandwidthToggle(value: lowBandwidth, onChanged: onBandwidthChanged),
+        const SizedBox(height: AppSpacing.xxl),
       ],
     );
   }
@@ -393,6 +388,7 @@ class _HomeHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final deployment = ref.watch(deploymentProvider);
     final colorScheme = Theme.of(context).colorScheme;
+    final lowBandwidth = ref.watch(lowBandwidthModeProvider);
 
     return Row(
       children: [
@@ -400,8 +396,22 @@ class _HomeHeader extends ConsumerWidget {
           width: 46,
           height: 46,
           decoration: BoxDecoration(
-            color: colorScheme.primary,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                colorScheme.primary,
+                colorScheme.primary.withValues(alpha: 0.75),
+              ],
+            ),
             borderRadius: BorderRadius.circular(AppSpacing.controlRadius),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.primary.withValues(alpha: 0.30),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Icon(Icons.directions_bus_rounded, color: colorScheme.onPrimary),
         ),
@@ -418,8 +428,42 @@ class _HomeHeader extends ConsumerWidget {
             ],
           ),
         ),
+        // Low Bandwidth Mode toggle — compact icon button
+        Tooltip(
+          message: lowBandwidth ? 'Low Bandwidth: ON' : 'Low Bandwidth: OFF',
+          child: GestureDetector(
+            onTap: () => ref
+                .read(settingsNotifierProvider.notifier)
+                .setLowBandwidth(!lowBandwidth),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 40,
+              height: 40,
+              margin: const EdgeInsets.only(right: AppSpacing.xs),
+              decoration: BoxDecoration(
+                color: lowBandwidth
+                    ? colorScheme.primary.withValues(alpha: 0.15)
+                    : colorScheme.surface,
+                borderRadius: BorderRadius.circular(AppSpacing.controlRadius),
+                border: Border.all(
+                  color: lowBandwidth
+                      ? colorScheme.primary.withValues(alpha: 0.60)
+                      : colorScheme.outline,
+                ),
+              ),
+              child: Icon(
+                lowBandwidth
+                    ? Icons.network_cell_rounded
+                    : Icons.network_cell_outlined,
+                color: lowBandwidth ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                size: 18,
+              ),
+            ),
+          ),
+        ),
+        // Goa location chip
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
             color: colorScheme.primaryContainer.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(AppSpacing.controlRadius),
@@ -428,9 +472,9 @@ class _HomeHeader extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.location_on_outlined,
+                Icons.location_on_rounded,
                 color: colorScheme.primary,
-                size: 16,
+                size: 14,
               ),
               const SizedBox(width: 4),
               Text(
@@ -690,47 +734,192 @@ class _EmptyFavoritesHint extends StatelessWidget {
   }
 }
 
-class _BandwidthToggle extends StatelessWidget {
-  const _BandwidthToggle({required this.value, required this.onChanged});
-  final bool value;
-  final ValueChanged<bool> onChanged;
+
+
+class _HomeJourneyPlannerPromptCard extends ConsumerWidget {
+  const _HomeJourneyPlannerPromptCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.xs,
-      ),
+    final theme = Theme.of(context);
+    final activeSession = ref.watch(activeJourneySessionProvider);
+    final origin = ref.watch(journeyOriginProvider);
+
+    return Container(
       decoration: BoxDecoration(
-        color: value ? colorScheme.primaryContainer : colorScheme.surface,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: colorScheme.outline),
+        border: Border.all(
+          color: activeSession != null
+              ? colorScheme.primary
+              : colorScheme.outlineVariant.withValues(alpha: 0.8),
+          width: activeSession != null ? 1.5 : 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: activeSession != null
+                ? colorScheme.primary.withValues(alpha: 0.12)
+                : Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Row(
-        children: [
-          Icon(Icons.network_cell_outlined, color: colorScheme.onSurfaceVariant),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: const ValueKey('home-journey-planner-card'),
+          onTap: () {
+            if (activeSession != null) {
+              final firstTransit = activeSession.journey.firstTransitLeg;
+              if (firstTransit != null && firstTransit.route != null) {
+                context.push(RoutePaths.trackingFor(firstTransit.route!.id));
+                return;
+              }
+            }
+            context.push(RoutePaths.journeyPlanner);
+          },
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+          splashColor: colorScheme.primary.withValues(alpha: 0.06),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Low bandwidth mode',
-                  style: Theme.of(context).textTheme.titleMedium,
+                if (activeSession != null) ...[
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.navigation_rounded, size: 12, color: colorScheme.primary),
+                            const SizedBox(width: 4),
+                            Text(
+                              'TRIP IN PROGRESS',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'Destination: ${activeSession.finalDestination.name}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.alt_route_rounded, color: colorScheme.primary, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Where are you going?',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            'Transit navigation with transfer guidance',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 14,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ],
                 ),
-                Text(
-                  'Use a lighter experience when needed.',
-                  style: Theme.of(context).textTheme.bodySmall,
+                const SizedBox(height: 12),
+                // Origin row
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.my_location_rounded, size: 14, color: colorScheme.tertiary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          origin.isCurrentLocation ? 'Current location' : origin.name,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurface,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                // Destination row
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.search_rounded, size: 14, color: colorScheme.onSurfaceVariant),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Search destination (Fatorda, Panaji, Vasco...)',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          Switch.adaptive(value: value, onChanged: onChanged),
-        ],
+        ),
       ),
     );
   }
 }
+

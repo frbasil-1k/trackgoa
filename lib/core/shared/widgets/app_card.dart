@@ -2,10 +2,11 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 
 /// A softly elevated surface shared by SMART-GO feature screens.
+///
+/// Adapts to both light and dark themes using the active [ColorScheme].
 class AppCard extends StatelessWidget {
   const AppCard({
     required this.child,
@@ -22,16 +23,28 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = colorScheme.brightness == Brightness.dark;
+
+    // Shadow is more subtle in dark mode (surfaces are already elevated by bg contrast)
+    final shadowColor = isDark
+        ? const Color(0xFF000000)
+        : const Color(0xFF0B2C31);
+
     final surface = DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: glass ? 0.78 : 1),
+        color: glass
+            ? colorScheme.surface.withValues(alpha: 0.78)
+            : colorScheme.surface,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.outline.withValues(alpha: 0.8)),
-        boxShadow: const [
+        border: Border.all(
+          color: colorScheme.outline.withValues(alpha: isDark ? 1.0 : 0.8),
+        ),
+        boxShadow: [
           BoxShadow(
-            color: Color(0x120B2C31),
-            blurRadius: 18,
-            offset: Offset(0, 6),
+            color: shadowColor.withValues(alpha: isDark ? 0.28 : 0.07),
+            blurRadius: isDark ? 12 : 18,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -43,6 +56,8 @@ class AppCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        splashColor: colorScheme.primary.withValues(alpha: 0.06),
+        highlightColor: colorScheme.primary.withValues(alpha: 0.04),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
           child: glass

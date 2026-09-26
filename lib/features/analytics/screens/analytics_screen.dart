@@ -21,7 +21,7 @@ class AnalyticsScreen extends ConsumerWidget {
     final allAnalytics = ref.watch(allAnalyticsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // ── Premium app bar ───────────────────────────────────────────────
@@ -145,7 +145,7 @@ class _PremiumSliverAppBar extends StatelessWidget {
     return SliverAppBar(
       expandedHeight: 120,
       pinned: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       surfaceTintColor: Colors.transparent,
       leading: Padding(
         padding: const EdgeInsets.only(left: AppSpacing.sm),
@@ -155,13 +155,13 @@ class _PremiumSliverAppBar extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               shape: BoxShape.circle,
               boxShadow: const [
                 BoxShadow(color: Color(0x0F000000), blurRadius: 12, offset: Offset(0, 3)),
               ],
             ),
-            child: const Icon(Icons.arrow_back_rounded, size: 20, color: AppColors.textPrimary),
+            child: Icon(Icons.arrow_back_rounded, size: 20, color: Theme.of(context).colorScheme.onSurface),
           ),
         ),
       ),
@@ -172,7 +172,7 @@ class _PremiumSliverAppBar extends StatelessWidget {
           'Analytics ${routeId.toUpperCase()}',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 20,
               ),
         ),

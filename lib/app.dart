@@ -5,14 +5,14 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'data/repositories/repository_providers.dart';
 
-class TrackGoaApp extends ConsumerStatefulWidget {
-  const TrackGoaApp({super.key});
+class SmartGoApp extends ConsumerStatefulWidget {
+  const SmartGoApp({super.key});
 
   @override
-  ConsumerState<TrackGoaApp> createState() => _TrackGoaAppState();
+  ConsumerState<SmartGoApp> createState() => _SmartGoAppState();
 }
 
-class _TrackGoaAppState extends ConsumerState<TrackGoaApp> {
+class _SmartGoAppState extends ConsumerState<SmartGoApp> {
   /// Tracks the previous theme mode to detect when it changes.
   ThemeMode? _previousThemeMode;
 
@@ -30,7 +30,7 @@ class _TrackGoaAppState extends ConsumerState<TrackGoaApp> {
 
     return MaterialApp.router(
       key: needsRouterRebuild ? ValueKey(themeMode) : null,
-      title: 'TrackGoa',
+      title: 'SMART-GO',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,

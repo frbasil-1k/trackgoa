@@ -8,11 +8,13 @@ class MapControls extends StatelessWidget {
   const MapControls({
     required this.mapController,
     required this.onCenterRoute,
+    this.onCenterBus,
     super.key,
   });
 
   final MapController mapController;
   final VoidCallback onCenterRoute;
+  final VoidCallback? onCenterBus;
 
   @override
   Widget build(BuildContext context) {
@@ -21,10 +23,9 @@ class MapControls extends StatelessWidget {
       right: AppSpacing.md,
       child: Column(
         children: [
-          // Removed TweenAnimationBuilder animations - controls appear instantly
-          // This reduces animation overhead on screen load
           _GlassButton(
             icon: Icons.add_rounded,
+            tooltip: 'Zoom in',
             onPressed: () {
               final currentZoom = mapController.camera.zoom;
               mapController.move(
@@ -36,6 +37,7 @@ class MapControls extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           _GlassButton(
             icon: Icons.remove_rounded,
+            tooltip: 'Zoom out',
             onPressed: () {
               final currentZoom = mapController.camera.zoom;
               mapController.move(
@@ -46,9 +48,18 @@ class MapControls extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           _GlassButton(
-            icon: Icons.my_location_rounded,
+            icon: Icons.route_rounded,
+            tooltip: 'Center route',
             onPressed: onCenterRoute,
           ),
+          if (onCenterBus != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            _GlassButton(
+              icon: Icons.directions_bus_rounded,
+              tooltip: 'Focus live bus',
+              onPressed: onCenterBus!,
+            ),
+          ],
         ],
       ),
     );
@@ -59,10 +70,12 @@ class _GlassButton extends StatefulWidget {
   const _GlassButton({
     required this.icon,
     required this.onPressed,
+    this.tooltip,
   });
 
   final IconData icon;
   final VoidCallback onPressed;
+  final String? tooltip;
 
   @override
   State<_GlassButton> createState() => _GlassButtonState();
@@ -105,7 +118,7 @@ class _GlassButtonState extends State<_GlassButton>
 
   @override
   Widget build(BuildContext context) {
-    return ScaleTransition(
+    Widget button = ScaleTransition(
       scale: _scaleAnimation,
       child: Container(
         width: 52,
@@ -114,7 +127,6 @@ class _GlassButtonState extends State<_GlassButton>
           color: Colors.white.withValues(alpha: 0.96),
           shape: BoxShape.circle,
           boxShadow: const [
-            // Single shadow for better performance
             BoxShadow(
               color: Color(0x0F000000),
               blurRadius: 12,
@@ -143,5 +155,18 @@ class _GlassButtonState extends State<_GlassButton>
         ),
       ),
     );
+
+    if (widget.tooltip != null) {
+      button = Tooltip(
+        message: widget.tooltip!,
+        child: Semantics(
+          button: true,
+          label: widget.tooltip,
+          child: button,
+        ),
+      );
+    }
+
+    return button;
   }
 }

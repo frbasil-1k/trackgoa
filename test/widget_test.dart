@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:trackgoa/app.dart';
-import 'package:trackgoa/data/repositories/repository_providers.dart';
+import 'package:smart_go/app.dart';
+import 'package:smart_go/data/repositories/repository_providers.dart';
 
 void main() {
   testWidgets('shell navigation switches destinations', (tester) async {
     // Phase 6.5 — Mock SharedPreferences for widget tests.
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
 
@@ -16,12 +21,12 @@ void main() {
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
         ],
-        child: const TrackGoaApp(),
+        child: const SmartGoApp(),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('TrackGoa'), findsOneWidget);
+    expect(find.text('SMART-GO'), findsOneWidget);
 
     await tester.tap(find.text('Routes'));
     await tester.pumpAndSettle();
@@ -42,14 +47,14 @@ void main() {
     await tester.pumpAndSettle();
 
     // Navigate to tracking screen (now has full map implementation)
-    await tester.tap(find.text('Panaji → Miramar'));
+    await tester.tap(find.text('Panaji Bus Stand → Panaji Bus Stand').first);
     // Use pump (not pumpAndSettle) — the bus animation ticker runs every
     // frame so the screen never settles.
     await tester.pump();
     await tester.pump(const Duration(seconds: 3));
 
     // Verify tracking screen loaded by checking for route info in bottom sheet
-    expect(find.text('Panaji → Miramar'), findsAtLeastNWidgets(1));
+    expect(find.text('Panaji Bus Stand → Panaji Bus Stand'), findsAtLeastNWidgets(1));
     // Live ETA card is now shown with a 'Live' status pill
     expect(find.text('Live'), findsOneWidget);
 

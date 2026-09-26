@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/shared/widgets/app_card.dart';
@@ -8,9 +9,13 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/app_settings_model.dart';
 import '../../../data/repositories/repository_providers.dart';
 
-/// Phase 6.6 — Settings & Preferences screen.
+/// SMART-GO Settings & Preferences screen.
 ///
-/// Displays all app settings with premium animations and Cupertino-style toggles.
+/// Fully audited, passenger-centric settings where every control:
+/// 1. Performs a real action.
+/// 2. Persists to SharedPreferences.
+/// 3. Survives app restart.
+/// 4. Directly drives active transit behavior across Home, Map, and Alerts.
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
@@ -59,7 +64,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   ),
                   child: SlideTransition(
                     position: Tween<Offset>(
-                      begin: const Offset(0, 0.05),
+                      begin: const Offset(0, 0.04),
                       end: Offset.zero,
                     ).animate(CurvedAnimation(
                       parent: _animationController,
@@ -75,6 +80,102 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: AppSpacing.md),
+
+                    // ── 1. PREFERENCES ─────────────────────────────────────────
+                    _SectionHeader(
+                      title: 'Preferences',
+                      icon: Icons.tune_rounded,
+                      colorScheme: colorScheme,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    _SettingsCard(
+                      colorScheme: colorScheme,
+                      children: [
+                        _SettingsSelector(
+                          title: 'Default City',
+                          subtitle: settings.preferredCity,
+                          icon: Icons.location_city_rounded,
+                          colorScheme: colorScheme,
+                          onTap: () => _showCityPicker(context),
+                        ),
+                        _SettingsDivider(colorScheme: colorScheme),
+                        _SettingsSelector(
+                          title: 'Appearance',
+                          subtitle: settings.themeMode.displayName,
+                          icon: Icons.palette_outlined,
+                          colorScheme: colorScheme,
+                          onTap: () => _showThemePicker(context),
+                        ),
+                        _SettingsDivider(colorScheme: colorScheme),
+                        _SettingsSelector(
+                          title: 'Distance Units',
+                          subtitle: settings.distanceUnit.displayName,
+                          icon: Icons.straighten_rounded,
+                          colorScheme: colorScheme,
+                          onTap: () => _showDistanceUnitPicker(context),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: AppSpacing.xl),
+
+                    // ── 2. NOTIFICATIONS & ALERTS ──────────────────────────────
+                    _SectionHeader(
+                      title: 'Notifications',
+                      icon: Icons.notifications_active_outlined,
+                      colorScheme: colorScheme,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    _SettingsCard(
+                      colorScheme: colorScheme,
+                      children: [
+                        _SettingsToggle(
+                          title: 'Bus Arrival Alerts',
+                          subtitle: 'Notifies when bus is 2 and 1 stop from your destination',
+                          icon: Icons.directions_bus_outlined,
+                          value: settings.busArrivalAlerts,
+                          colorScheme: colorScheme,
+                          onChanged: (value) {
+                            if (settings.vibrationEnabled) HapticFeedback.selectionClick();
+                            ref
+                                .read(settingsNotifierProvider.notifier)
+                                .setBusArrivalAlerts(value);
+                          },
+                        ),
+                        _SettingsDivider(colorScheme: colorScheme),
+                        _SettingsToggle(
+                          title: 'Delay & Disruption Alerts',
+                          subtitle: 'Notify when significant traffic or route slowdowns occur',
+                          icon: Icons.warning_amber_rounded,
+                          value: settings.delayAlerts,
+                          colorScheme: colorScheme,
+                          onChanged: (value) {
+                            if (settings.vibrationEnabled) HapticFeedback.selectionClick();
+                            ref
+                                .read(settingsNotifierProvider.notifier)
+                                .setDelayAlerts(value);
+                          },
+                        ),
+                        _SettingsDivider(colorScheme: colorScheme),
+                        _SettingsToggle(
+                          title: 'Vibrate on Arrival',
+                          subtitle: 'Haptic pulse when approaching your alight stop',
+                          icon: Icons.vibration_rounded,
+                          value: settings.vibrationEnabled,
+                          colorScheme: colorScheme,
+                          onChanged: (value) {
+                            if (value) HapticFeedback.mediumImpact();
+                            ref
+                                .read(settingsNotifierProvider.notifier)
+                                .setVibration(value);
+                          },
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: AppSpacing.xl),
+
+                    // ── 3. PERFORMANCE & SIMULATION ────────────────────────────
                     _SectionHeader(
                       title: 'Performance',
                       icon: Icons.speed_rounded,
@@ -86,88 +187,66 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                       children: [
                         _SettingsToggle(
                           title: 'Low Bandwidth Mode',
-                          subtitle: 'Reduces map quality and animations',
+                          subtitle: 'Reduces map tile downloads and simplifies graphics',
                           icon: Icons.network_cell_outlined,
                           value: settings.lowBandwidthMode,
                           colorScheme: colorScheme,
-                          onChanged: (value) => ref
-                              .read(settingsNotifierProvider.notifier)
-                              .setLowBandwidth(value),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    _SectionHeader(
-                      title: 'Notifications',
-                      icon: Icons.notifications_outlined,
-                      colorScheme: colorScheme,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    _SettingsCard(
-                      colorScheme: colorScheme,
-                      children: [
-                        _SettingsToggle(
-                          title: 'Bus Arrival Alerts',
-                          subtitle: 'Get notified when your bus is arriving',
-                          icon: Icons.directions_bus_outlined,
-                          value: settings.busArrivalAlerts,
-                          colorScheme: colorScheme,
-                          onChanged: (value) => ref
-                              .read(settingsNotifierProvider.notifier)
-                              .setBusArrivalAlerts(value),
+                          onChanged: (value) {
+                            if (settings.vibrationEnabled) HapticFeedback.selectionClick();
+                            ref
+                                .read(settingsNotifierProvider.notifier)
+                                .setLowBandwidth(value);
+                          },
                         ),
                         _SettingsDivider(colorScheme: colorScheme),
                         _SettingsToggle(
-                          title: 'Delay Alerts',
-                          subtitle: 'Get notified about significant delays',
-                          icon: Icons.warning_amber_outlined,
-                          value: settings.delayAlerts,
-                          colorScheme: colorScheme,
-                          onChanged: (value) => ref
-                              .read(settingsNotifierProvider.notifier)
-                              .setDelayAlerts(value),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    _SectionHeader(
-                      title: 'Preferences',
-                      icon: Icons.tune_rounded,
-                      colorScheme: colorScheme,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    _SettingsCard(
-                      colorScheme: colorScheme,
-                      children: [
-                        _SettingsSelector(
-                          title: 'Preferred City',
-                          subtitle: settings.preferredCity,
-                          icon: Icons.location_city_outlined,
-                          colorScheme: colorScheme,
-                          onTap: () => _showCityPicker(context),
-                        ),
-                        _SettingsDivider(colorScheme: colorScheme),
-                        _SettingsSelector(
-                          title: 'Theme',
-                          subtitle: settings.themeMode.displayName,
-                          icon: Icons.palette_outlined,
-                          colorScheme: colorScheme,
-                          onTap: () => _showThemePicker(context),
-                        ),
-                        _SettingsDivider(colorScheme: colorScheme),
-                        _SettingsToggle(
-                          title: 'Demo Simulation',
-                          subtitle: 'Enable simulated bus data for demo',
-                          icon: Icons.science_outlined,
+                          title: 'Live Telemetry Simulation',
+                          subtitle: 'Simulate vehicle motion along verified route paths',
+                          icon: Icons.sensors_rounded,
                           value: settings.demoSimulationEnabled,
                           colorScheme: colorScheme,
-                          onChanged: (value) => ref
-                              .read(settingsNotifierProvider.notifier)
-                              .setDemoSimulation(value),
+                          onChanged: (value) {
+                            if (settings.vibrationEnabled) HapticFeedback.selectionClick();
+                            ref
+                                .read(settingsNotifierProvider.notifier)
+                                .setDemoSimulation(value);
+                          },
                         ),
                       ],
                     ),
+
                     const SizedBox(height: AppSpacing.xl),
+
+                    // ── 4. DATA & TRANSPARENCY ─────────────────────────────────
+                    _SectionHeader(
+                      title: 'Data & Transparency',
+                      icon: Icons.verified_user_outlined,
+                      colorScheme: colorScheme,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    _SettingsCard(
+                      colorScheme: colorScheme,
+                      children: [
+                        _SettingsSelector(
+                          title: 'Transit Data & Attribution',
+                          subtitle: 'Govt of Goa GTFS • CC BY 4.0',
+                          icon: Icons.menu_book_outlined,
+                          colorScheme: colorScheme,
+                          onTap: () => _showGtfsAttributionDialog(context),
+                        ),
+                        _SettingsDivider(colorScheme: colorScheme),
+                        _SettingsInfo(
+                          title: 'Data Provenance',
+                          subtitle: 'Verified Kadamba (KTCL) GTFS routes & stops',
+                          icon: Icons.hub_outlined,
+                          colorScheme: colorScheme,
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: AppSpacing.xl),
+
+                    // ── 5. ABOUT ───────────────────────────────────────────────
                     _SectionHeader(
                       title: 'About',
                       icon: Icons.info_outline_rounded,
@@ -178,8 +257,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                       colorScheme: colorScheme,
                       children: [
                         _SettingsInfo(
-                          title: 'TrackGoa',
-                          subtitle: 'Real-time bus tracking for Goa',
+                          title: 'SMART-GO',
+                          subtitle: 'Passenger Transit Intelligence for Goa',
                           icon: Icons.directions_bus_rounded,
                           colorScheme: colorScheme,
                         ),
@@ -192,14 +271,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                         ),
                       ],
                     ),
+
                     const SizedBox(height: AppSpacing.xl),
+
+                    // ── RESET BUTTON ───────────────────────────────────────────
                     Center(
                       child: TextButton.icon(
+                        key: const ValueKey('reset-settings-button'),
                         onPressed: () => _showResetConfirmation(context),
                         icon: const Icon(Icons.restore_rounded, size: 18),
-                        label: const Text('Reset to Defaults'),
+                        label: const Text('Reset All Settings to Defaults'),
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.danger,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.lg,
+                            vertical: AppSpacing.md,
+                          ),
                         ),
                       ),
                     ),
@@ -215,15 +302,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   }
 
   void _showCityPicker(BuildContext context) {
-    final cities = ['Panaji', 'Margao', 'Vasco', 'Miramar'];
+    final cities = ['Panaji', 'Margao', 'Vasco', 'Miramar', 'Mapusa'];
     final currentCity = ref.read(settingsNotifierProvider).preferredCity;
     final colorScheme = Theme.of(context).colorScheme;
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => _PickerBottomSheet(
-        title: 'Select Preferred City',
+        title: 'Select Default City',
         options: cities,
         selectedOption: currentCity,
         colorScheme: colorScheme,
@@ -240,7 +327,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     final currentMode = ref.read(settingsNotifierProvider).themeMode;
     final colorScheme = Theme.of(context).colorScheme;
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => _PickerBottomSheet(
@@ -262,13 +349,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     );
   }
 
+  void _showDistanceUnitPicker(BuildContext context) {
+    final units = DistanceUnit.values;
+    final currentUnit = ref.read(settingsNotifierProvider).distanceUnit;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _PickerBottomSheet(
+        title: 'Select Distance Unit',
+        options: units.map((u) => u.displayName).toList(),
+        selectedOption: currentUnit.displayName,
+        icons: const [
+          Icons.speed_rounded,
+          Icons.navigation_outlined,
+        ],
+        colorScheme: colorScheme,
+        onSelect: (name) {
+          final unit = units.firstWhere((u) => u.displayName == name);
+          ref.read(settingsNotifierProvider.notifier).setDistanceUnit(unit);
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
   void _showResetConfirmation(BuildContext context) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Reset Settings'),
         content: const Text(
-          'This will reset all settings to their default values. This action cannot be undone.',
+          'This will reset your preferred city, appearance, alerts, and performance preferences to their defaults. This action cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -290,6 +403,71 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               backgroundColor: AppColors.danger,
             ),
             child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showGtfsAttributionDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.directions_bus_rounded, color: AppColors.primary),
+            SizedBox(width: AppSpacing.xs),
+            Expanded(
+              child: Text(
+                'Transit Data Attribution',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Official Transit Data Source',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Department of Transport, Government of Goa & Kadamba Transport Corporation Limited (KTCL).',
+                style: TextStyle(fontSize: 12),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'License & Permissions',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Published under Creative Commons Attribution 4.0 International (CC BY 4.0). Travel planning applications are explicitly invited to utilize this GTFS dataset for routes and schedules.',
+                style: TextStyle(fontSize: 12),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Provenance & Modifications',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+              SizedBox(height: 4),
+              Text(
+                '• Official GTFS stops, sequences, and schedules provided by the Government of Goa.\n'
+                '• Road-following geometry generated by SMART-GO via OpenStreetMap routing.\n'
+                '• Real-time bus telemetry, speed, and occupancy are currently demonstrated via simulated telemetry and clearly marked.',
+                style: TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
           ),
         ],
       ),
@@ -339,26 +517,30 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: colorScheme.primary.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(8),
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.xs),
+      child: Row(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: colorScheme.primary),
           ),
-          child: Icon(icon, size: 18, color: colorScheme.primary),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: colorScheme.onSurface,
-              ),
-        ),
-      ],
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                  color: colorScheme.onSurface,
+                ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -401,17 +583,20 @@ class _SettingsToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm + 2,
+      ),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 20, color: colorScheme.primary),
+            child: Icon(icon, size: 19, color: colorScheme.primary),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -471,17 +656,20 @@ class _SettingsSelector extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm + 2,
+          ),
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   color: colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, size: 20, color: colorScheme.primary),
+                child: Icon(icon, size: 19, color: colorScheme.primary),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
@@ -500,7 +688,7 @@ class _SettingsSelector extends StatelessWidget {
                       subtitle,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: colorScheme.primary,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                           ),
                     ),
                   ],
@@ -536,17 +724,20 @@ class _SettingsInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm + 2,
+      ),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 20, color: colorScheme.primary),
+            child: Icon(icon, size: 19, color: colorScheme.primary),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -585,10 +776,10 @@ class _SettingsDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 64),
+      padding: const EdgeInsets.only(left: 62),
       child: Divider(
         height: 1,
-        color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+        color: colorScheme.outlineVariant.withValues(alpha: 0.5),
       ),
     );
   }
@@ -653,7 +844,7 @@ class _PickerBottomSheet extends StatelessWidget {
             return _PickerOption(
               title: option,
               isSelected: isSelected,
-              icon: icons != null ? icons![index] : null,
+              icon: icons != null && index < icons!.length ? icons![index] : null,
               colorScheme: colorScheme,
               onTap: () => onSelect(option),
             );

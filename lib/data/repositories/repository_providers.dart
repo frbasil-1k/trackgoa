@@ -8,6 +8,7 @@ import '../models/app_settings_model.dart';
 import '../models/bus_position.dart';
 import '../models/favorites_model.dart';
 import '../sources/bus_data_source.dart';
+import '../sources/goa_gtfs_route_data_source.dart';
 import '../sources/mock_route_data_source.dart';
 import '../sources/route_data_source.dart';
 import '../sources/simulated_bus_data_source.dart';
@@ -18,8 +19,13 @@ import 'route_repository.dart';
 import 'settings_repository.dart';
 import '../../features/tracking/services/bus_simulation_engine.dart';
 
-/// Source providers centralize the future mock-to-backend implementation swap.
+/// Primary route data source powered by official Government of Goa GTFS data.
 final routeDataSourceProvider = Provider<RouteDataSource>(
+  (ref) => const GoaGtfsRouteDataSource(),
+);
+
+/// Fallback / mock route data source for isolated testing.
+final mockRouteDataSourceProvider = Provider<RouteDataSource>(
   (ref) => const MockRouteDataSource(),
 );
 final busDataSourceProvider = Provider<BusDataSource>(
@@ -205,6 +211,14 @@ class SettingsNotifier extends StateNotifier<AppSettingsState> {
 
   Future<void> setDemoSimulation(bool value) async {
     state = await _repo.setDemoSimulation(state, value);
+  }
+
+  Future<void> setVibration(bool value) async {
+    state = await _repo.setVibration(state, value);
+  }
+
+  Future<void> setDistanceUnit(DistanceUnit value) async {
+    state = await _repo.setDistanceUnit(state, value);
   }
 
   Future<void> resetToDefaults() async {

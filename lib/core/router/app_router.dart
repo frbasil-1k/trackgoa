@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/analytics/screens/analytics_screen.dart';
 import '../../features/favorites/screens/favorites_screen.dart';
 import '../../features/home/screens/home_screen.dart';
+import '../../features/journey_planner/screens/journey_planner_screen.dart';
 import '../../features/routes/screens/route_list_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/tracking/screens/tracking_screen.dart';
@@ -64,6 +65,10 @@ final GoRouter appRouter = GoRouter(
       path: RoutePaths.analytics,
       builder: (context, state) =>
           AnalyticsScreen(routeId: state.pathParameters['routeId']!),
+    ),
+    GoRoute(
+      path: RoutePaths.journeyPlanner,
+      builder: (context, state) => const JourneyPlannerScreen(),
     ),
   ],
 );

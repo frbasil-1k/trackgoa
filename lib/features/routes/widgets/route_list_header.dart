@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/deployment_providers.dart';
 import '../../../core/shared/widgets/city_chip.dart';
 import '../../../core/shared/widgets/primary_search_bar.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -15,7 +16,6 @@ class RouteListHeader extends ConsumerStatefulWidget {
 }
 
 class _RouteListHeaderState extends ConsumerState<RouteListHeader> {
-  static const _cities = ['All', 'Panaji', 'Margao', 'Vasco', 'Miramar'];
   bool _searchActive = false;
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
@@ -44,6 +44,8 @@ class _RouteListHeaderState extends ConsumerState<RouteListHeader> {
     final selectedCity = ref.watch(
       routeFilterProvider.select((state) => state.selectedCity),
     );
+    final deploymentCities = ref.watch(deploymentCitiesProvider);
+    final cities = ['All', ...deploymentCities];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,6 +62,7 @@ class _RouteListHeaderState extends ConsumerState<RouteListHeader> {
                     hintText: 'Search routes, stops...',
                     prefixIcon: const Icon(Icons.search_rounded),
                     suffixIcon: IconButton(
+                      tooltip: 'Clear search',
                       icon: const Icon(Icons.close_rounded),
                       onPressed: () {
                         _searchController.clear();
@@ -89,11 +92,11 @@ class _RouteListHeaderState extends ConsumerState<RouteListHeader> {
           height: 40,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: _cities.length,
+            itemCount: cities.length,
             separatorBuilder: (context, index) =>
                 const SizedBox(width: AppSpacing.xs),
             itemBuilder: (context, index) {
-              final city = _cities[index];
+              final city = cities[index];
               return CityChip(
                 label: city,
                 isSelected: selectedCity == city,

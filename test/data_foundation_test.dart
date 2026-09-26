@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:trackgoa/data/repositories/bus_repository.dart';
-import 'package:trackgoa/data/repositories/route_repository.dart';
-import 'package:trackgoa/data/sources/mock_route_data_source.dart';
-import 'package:trackgoa/data/sources/simulated_bus_data_source.dart';
-import 'package:trackgoa/features/tracking/services/bus_simulation_engine.dart';
+import 'package:smart_go/data/repositories/bus_repository.dart';
+import 'package:smart_go/data/repositories/route_repository.dart';
+import 'package:smart_go/data/sources/mock_route_data_source.dart';
+import 'package:smart_go/data/sources/simulated_bus_data_source.dart';
+import 'package:smart_go/features/tracking/services/bus_simulation_engine.dart';
 
 void main() {
   test('Goa route fixtures expose ordered routes and stops', () async {

@@ -17,6 +17,8 @@ class SettingsRepository {
   static const _kPreferredCity = 'settings_preferred_city';
   static const _kThemeMode = 'settings_theme_mode';
   static const _kDemoSimulation = 'settings_demo_simulation';
+  static const _kVibration = 'settings_vibration';
+  static const _kDistanceUnit = 'settings_distance_unit';
 
   /// Returns the current persisted settings synchronously.
   AppSettingsState load() {
@@ -27,6 +29,8 @@ class SettingsRepository {
       preferredCity: _prefs.getString(_kPreferredCity) ?? 'Panaji',
       themeMode: AppThemeMode.fromString(_prefs.getString(_kThemeMode) ?? 'system'),
       demoSimulationEnabled: _prefs.getBool(_kDemoSimulation) ?? true,
+      vibrationEnabled: _prefs.getBool(_kVibration) ?? true,
+      distanceUnit: DistanceUnit.fromString(_prefs.getString(_kDistanceUnit) ?? 'kilometers'),
     );
   }
 
@@ -74,6 +78,18 @@ class SettingsRepository {
     return current.copyWith(demoSimulationEnabled: value);
   }
 
+  /// Updates vibration toggle.
+  Future<AppSettingsState> setVibration(AppSettingsState current, bool value) async {
+    await _setBool(_kVibration, value);
+    return current.copyWith(vibrationEnabled: value);
+  }
+
+  /// Updates distance unit.
+  Future<AppSettingsState> setDistanceUnit(AppSettingsState current, DistanceUnit value) async {
+    await _setString(_kDistanceUnit, value.name);
+    return current.copyWith(distanceUnit: value);
+  }
+
   /// Resets all settings to defaults.
   Future<AppSettingsState> resetToDefaults() async {
     await Future.wait([
@@ -83,6 +99,8 @@ class SettingsRepository {
       _prefs.setString(_kPreferredCity, 'Panaji'),
       _prefs.setString(_kThemeMode, 'system'),
       _prefs.setBool(_kDemoSimulation, true),
+      _prefs.setBool(_kVibration, true),
+      _prefs.setString(_kDistanceUnit, 'kilometers'),
     ]);
     return AppSettingsState.defaults;
   }

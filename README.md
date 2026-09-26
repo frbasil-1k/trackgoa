@@ -1,17 +1,54 @@
-# trackgoa
+# SMART-GO
 
-A new Flutter project.
+**Goa's intelligent bus transportation companion.**
+
+SMART-GO is the first deployment of the **SMART** transportation platform — a multi-region, multi-modal transit system built with Flutter.
+
+## Features
+
+- 🗺️ Real-time bus tracking on interactive maps
+- 🚏 Route discovery with search and city filtering
+- ⏱️ Live ETA predictions per stop
+- 🔔 Smart proximity alerts (2 stops away, 1 stop away, arrived)
+- ⭐ Favorites and recently viewed routes
+- 📊 Route analytics and reliability dashboards
+- 🌙 Dark mode support
+- 📶 Low bandwidth mode for poor connectivity
+
+## Architecture
+
+```
+SmartDeployment → DataSource → Repository → Riverpod Provider → UI
+```
+
+The platform is **deployment-aware**: all region-specific values (cities, map bounds, operator info) flow from a `SmartDeployment` configuration. The same codebase can be configured for future deployments:
+
+- **SMART-GO** — Goa
+- **SMART-KA** — Karnataka (future)
+- **SMART-MH** — Maharashtra (future)
+
+## Tech Stack
+
+- **Flutter** + **Dart** — Cross-platform UI
+- **Riverpod** — State management
+- **GoRouter** — Navigation
+- **flutter_map** + **OpenStreetMap** — Mapping
+- **Dio** — HTTP client
+- **Geolocator** — Device location
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+```bash
+flutter pub get
+flutter run
+```
 
-A few resources to get you started if this is your first Flutter project:
+## Project Structure
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```
+lib/
+├── core/           # Platform core (models, providers, theme, navigation, widgets)
+├── data/           # Data layer (models, sources, repositories, mock data)
+├── features/       # Feature modules (home, routes, tracking, favorites, analytics, settings)
+└── deployments/    # Deployment configs (smart_go/)
+```

@@ -1,6 +1,30 @@
 import 'package:flutter/material.dart';
 
-/// Phase 6.6 — Persisted app settings state.
+/// Distance unit preference enum.
+enum DistanceUnit {
+  kilometers,
+  miles;
+
+  String get displayName {
+    switch (this) {
+      case DistanceUnit.kilometers:
+        return 'Kilometers (km)';
+      case DistanceUnit.miles:
+        return 'Miles (mi)';
+    }
+  }
+
+  String get symbol => this == DistanceUnit.kilometers ? 'km' : 'mi';
+
+  static DistanceUnit fromString(String value) {
+    return switch (value) {
+      'miles' => DistanceUnit.miles,
+      _ => DistanceUnit.kilometers,
+    };
+  }
+}
+
+/// Persisted app settings state.
 ///
 /// Architecture note: all fields are simple values making this trivially
 /// serializable to SharedPreferences or a backend. The full app theme and
@@ -14,6 +38,8 @@ class AppSettingsState {
     required this.preferredCity,
     required this.themeMode,
     required this.demoSimulationEnabled,
+    this.vibrationEnabled = true,
+    this.distanceUnit = DistanceUnit.kilometers,
   });
 
   /// Low-bandwidth mode reduces map tile quality and disables animations.
@@ -31,8 +57,14 @@ class AppSettingsState {
   /// App-wide theme: system, light, or dark.
   final AppThemeMode themeMode;
 
-  /// When true, bus simulation runs with demo data (Phase 6.1).
+  /// When true, bus simulation runs with demo data.
   final bool demoSimulationEnabled;
+
+  /// Enable haptic feedback / vibration for alerts and important interactions.
+  final bool vibrationEnabled;
+
+  /// Unit of measurement for distance.
+  final DistanceUnit distanceUnit;
 
   AppSettingsState copyWith({
     bool? lowBandwidthMode,
@@ -41,6 +73,8 @@ class AppSettingsState {
     String? preferredCity,
     AppThemeMode? themeMode,
     bool? demoSimulationEnabled,
+    bool? vibrationEnabled,
+    DistanceUnit? distanceUnit,
   }) =>
       AppSettingsState(
         lowBandwidthMode: lowBandwidthMode ?? this.lowBandwidthMode,
@@ -50,6 +84,8 @@ class AppSettingsState {
         themeMode: themeMode ?? this.themeMode,
         demoSimulationEnabled:
             demoSimulationEnabled ?? this.demoSimulationEnabled,
+        vibrationEnabled: vibrationEnabled ?? this.vibrationEnabled,
+        distanceUnit: distanceUnit ?? this.distanceUnit,
       );
 
   /// Default settings for new users or when preferences are reset.
@@ -60,6 +96,8 @@ class AppSettingsState {
     preferredCity: 'Panaji',
     themeMode: AppThemeMode.system,
     demoSimulationEnabled: true,
+    vibrationEnabled: true,
+    distanceUnit: DistanceUnit.kilometers,
   );
 
   @override
@@ -70,7 +108,9 @@ class AppSettingsState {
       other.delayAlerts == delayAlerts &&
       other.preferredCity == preferredCity &&
       other.themeMode == themeMode &&
-      other.demoSimulationEnabled == demoSimulationEnabled;
+      other.demoSimulationEnabled == demoSimulationEnabled &&
+      other.vibrationEnabled == vibrationEnabled &&
+      other.distanceUnit == distanceUnit;
 
   @override
   int get hashCode => Object.hash(
@@ -80,6 +120,8 @@ class AppSettingsState {
         preferredCity,
         themeMode,
         demoSimulationEnabled,
+        vibrationEnabled,
+        distanceUnit,
       );
 }
 
